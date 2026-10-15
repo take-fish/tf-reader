@@ -1,0 +1,12 @@
+openapi: 3.0.3
+info:
+  title: tf-reader API
+  version: 0.1.0
+  description: FishMatrix 阅读服务：书籍内容、阅读进度与协同评审接口契约（与实现同仓演进）
+paths:
+  /api/v1/reader/health:
+    get:
+      summary: 服务健康检查
+      responses:
+        "200":
+          description: 服务正常
