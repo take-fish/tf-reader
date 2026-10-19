@@ -1,8 +1,11 @@
 openapi: 3.0.3
 info:
   title: tf-reader API
-  version: 0.1.0
-  description: FishMatrix 阅读服务：书籍内容、阅读进度与协同评审接口契约（与实现同仓演进）
+  version: 0.2.0
+  description: |
+    FishMatrix 阅读服务：书籍/章节、阅读进度、书签与行内协作批注。
+    内容存储在 MySQL（fm_reader），章节正文由前端格式化为代码式审阅视图。
+
 paths:
   /api/v1/reader/health:
     get:
@@ -10,3 +13,225 @@ paths:
       responses:
         "200":
           description: 服务正常
+
+  /api/v1/reader/books:
+    get:
+      summary: 书单
+      responses:
+        "200":
+          description: '{ "books": BookSummary[] }'
+
+  /api/v1/reader/books/{bookId}:
+    get:
+      summary: 书籍详情与章节列表
+      parameters:
+        - in: path
+          name: bookId
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: BookDetail
+        "404":
+          description: 书籍不存在
+
+  /api/v1/reader/books/{bookId}/chapters/{chapterIndex}:
+    get:
+      summary: 章节正文
+      parameters:
+        - in: path
+          name: bookId
+          required: true
+          schema: { type: integer, format: int64 }
+        - in: path
+          name: chapterIndex
+          required: true
+          schema: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: '{ chapterIndex, title, content, paragraphCount }'
+
+  /api/v1/reader/books/import:
+    post:
+      summary: 导入 txt（UTF-8/GBK，≤8 MiB）
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: { type: string, format: binary }
+                title: { type: string }
+                author: { type: string }
+      responses:
+        "201":
+          description: BookSummary
+        "400":
+          description: 文件为空或未解析到章节
+        "413":
+          description: 文件过大
+
+  /api/v1/reader/books/{bookId}/progress:
+    get:
+      summary: 读取进度
+      parameters:
+        - in: path
+          name: bookId
+          required: true
+          schema: { type: integer, format: int64 }
+        - in: query
+          name: userId
+          required: true
+          schema: { type: string, pattern: '^[A-Za-z0-9_-]{1,64}$' }
+      responses:
+        "200":
+          description: '{ "progress": ReadingProgress | null }'
+    put:
+      summary: 保存进度
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgressRequest'
+      responses:
+        "204":
+          description: 已保存
+
+  /api/v1/reader/books/{bookId}/bookmarks:
+    get:
+      summary: 书签列表
+      parameters:
+        - in: path
+          name: bookId
+          required: true
+          schema: { type: integer, format: int64 }
+        - in: query
+          name: userId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: '{ "bookmarks": Bookmark[] }'
+    post:
+      summary: 添加书签（相同段落幂等）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookmarkRequest'
+      responses:
+        "201":
+          description: Bookmark
+
+  /api/v1/reader/bookmarks/{bookmarkId}:
+    delete:
+      summary: 删除书签
+      parameters:
+        - in: path
+          name: bookmarkId
+          required: true
+          schema: { type: integer, format: int64 }
+        - in: query
+          name: userId
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: 已删除
+        "404":
+          description: 书签不存在或不属于当前用户
+
+  /api/v1/reader/books/{bookId}/chapters/{chapterIndex}/annotations:
+    get:
+      summary: 增量拉取章节批注
+      parameters:
+        - in: path
+          name: bookId
+          required: true
+          schema: { type: integer, format: int64 }
+        - in: path
+          name: chapterIndex
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: afterId
+          schema: { type: integer, format: int64, default: 0 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 200, maximum: 200 }
+      responses:
+        "200":
+          description: '{ "annotations": Annotation[] }，id 升序'
+    post:
+      summary: 添加评审意见
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnnotationRequest'
+      responses:
+        "201":
+          description: Annotation
+
+components:
+  schemas:
+    BookSummary:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        title: { type: string }
+        author: { type: string }
+        description: { type: string }
+        chapterCount: { type: integer }
+        updatedAt: { type: string, format: date-time }
+    ReadingProgress:
+      type: object
+      properties:
+        chapterIndex: { type: integer }
+        scrollRatio: { type: number, minimum: 0, maximum: 1 }
+        updatedAt: { type: string, format: date-time }
+    ProgressRequest:
+      type: object
+      required: [userId, chapterIndex, scrollRatio]
+      properties:
+        userId: { type: string }
+        chapterIndex: { type: integer, minimum: 0 }
+        scrollRatio: { type: number, minimum: 0, maximum: 1 }
+    BookmarkRequest:
+      type: object
+      required: [userId, chapterIndex, paragraphIndex]
+      properties:
+        userId: { type: string }
+        chapterIndex: { type: integer }
+        paragraphIndex: { type: integer, minimum: 0 }
+        excerpt: { type: string, maxLength: 512 }
+        note: { type: string, maxLength: 500, nullable: true }
+    Bookmark:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        chapterIndex: { type: integer }
+        paragraphIndex: { type: integer }
+        excerpt: { type: string }
+        note: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+    AnnotationRequest:
+      type: object
+      required: [userId, nickname, paragraphIndex, content]
+      properties:
+        userId: { type: string }
+        nickname: { type: string, maxLength: 32 }
+        paragraphIndex: { type: integer, minimum: 0 }
+        content: { type: string, maxLength: 500 }
+    Annotation:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        paragraphIndex: { type: integer }
+        userId: { type: string }
+        nickname: { type: string }
+        content: { type: string }
+        createdAt: { type: string, format: date-time }
