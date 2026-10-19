@@ -16,9 +16,21 @@ spring:
     redis:
       host: ${REDIS_HOST:10.28.25.234}
       port: ${REDIS_PORT:6379}
+  sql:
+    init:
+      mode: ${SQL_INIT_MODE:always}
+      encoding: UTF-8
+  servlet:
+    multipart:
+      max-file-size: 8MB
+      max-request-size: 9MB
 
 server:
   port: 8103
+
+app:
+  reader:
+    max-import-bytes: ${READER_MAX_IMPORT_BYTES:8388608}
 
 management:
   endpoints:
