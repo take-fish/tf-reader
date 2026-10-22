@@ -1,5 +1,7 @@
 package com.fishmatrix.reader.controller;
 
+import com.fishmatrix.common.autoconfigure.FishCommonProperties;
+import com.fishmatrix.common.error.GlobalExceptionHandler;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -33,7 +35,7 @@ class BookControllerTest {
     void setUp() {
         libraryService = mock(LibraryService.class);
         mockMvc = MockMvcBuilders.standaloneSetup(new BookController(libraryService))
-                .setControllerAdvice(new ApiExceptionHandler())
+                .setControllerAdvice(new GlobalExceptionHandler(new FishCommonProperties()))
                 .build();
     }
 
