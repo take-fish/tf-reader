@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS reader_book (
+CREATE TABLE reader_book (
     id BIGINT NOT NULL AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
     author VARCHAR(128) NOT NULL DEFAULT '',
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS reader_book (
     PRIMARY KEY (id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS reader_chapter (
+CREATE TABLE reader_chapter (
     id BIGINT NOT NULL AUTO_INCREMENT,
     book_id BIGINT NOT NULL,
     chapter_index INT NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS reader_chapter (
     UNIQUE KEY uk_reader_chapter (book_id, chapter_index)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS reader_progress (
+CREATE TABLE reader_progress (
     user_id VARCHAR(64) NOT NULL,
     book_id BIGINT NOT NULL,
     chapter_index INT NOT NULL DEFAULT 0,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS reader_progress (
     PRIMARY KEY (user_id, book_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS reader_bookmark (
+CREATE TABLE reader_bookmark (
     id BIGINT NOT NULL AUTO_INCREMENT,
     user_id VARCHAR(64) NOT NULL,
     book_id BIGINT NOT NULL,
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS reader_bookmark (
     KEY idx_reader_bookmark_book (book_id, chapter_index)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS reader_annotation (
+CREATE TABLE reader_annotation (
     id BIGINT NOT NULL AUTO_INCREMENT,
     book_id BIGINT NOT NULL,
     chapter_index INT NOT NULL,
