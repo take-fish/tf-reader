@@ -5,7 +5,7 @@ FishMatrix（摸鱼矩阵）阅读服务：书籍内容、阅读进度与协同�
 - 端口：`8103`
 - 健康检查：`GET /actuator/health`、`GET /api/v1/reader/health`
 - 存储：MySQL `fm_reader`（`reader_book / reader_chapter / reader_progress / reader_bookmark / reader_annotation`）
-- 内置演示数据集：`古文观止·精选`（3 章公版选段），由 `data.sql` 幂等种子
+- 内置演示数据集：`古文观止·精选`（3 章公版选段），仅由测试迁移 seed `db/testdata/R__demo_books.sql` 写入
 - 支持导入 UTF-8 / GBK txt（≤8 MiB，按 `第X章/回/节/卷` 拆分）
 
 ## API 一览
@@ -25,20 +25,22 @@ FishMatrix（摸鱼矩阵）阅读服务：书籍内容、阅读进度与协同�
 
 ## 数据库初始化
 
-- 启动时执行 `schema.sql`（IF NOT EXISTS）与 `data.sql`（INSERT IGNORE）：
-  `spring.sql.init.mode=${SQL_INIT_MODE:always}`
-- `fm_app` 需要 `fm_reader.*` 的 DDL/DML 权限（集中机 `init-db.sh` 已授权）
-- 测试通过 `spring.sql.init.mode=never` 跳过初始化，CI 不依赖 MySQL
-- 已有 `fm_reader` 库不会自动执行新表 DDL 以外的改名；本版只新建表
+- 表结构由 Flyway `db/migration/V1__baseline.sql` 创建，由独立任务 `db-migrate-reader`
+  使用迁移账号执行；业务容器固定 `SPRING_FLYWAY_ENABLED=false`、`SQL_INIT_MODE=never`。
+- 演示书籍/章节位于 `src/main/resources/db/testdata/R__demo_books.sql`，只被测试迁移任务
+  的 `FLYWAY_LOCATIONS` 加载（`classpath:db/migration,classpath:db/testdata`），生产不加载。
+- 运行时账号只授 DML；迁移账号只授本库 DDL。
+- H2 单元测试使用 `src/test/resources/schema-h2.sql`，不依赖 MySQL。
 
 ## 环境变量
 
 | 变量 | 默认 | 说明 |
 |---|---|---|
 | `MYSQL_HOST` / `MYSQL_PORT` | `10.28.25.234` / `3306` | MySQL |
-| `MYSQL_APP_USER` / `MYSQL_APP_PASSWORD` | `fm_app` / 空 | 应用账号 |
+| `MYSQL_APP_USER` / `MYSQL_APP_PASSWORD` | `fm_reader_app` / 空 | 运行时账号（仅 DML） |
 | `NACOS_ADDR` / `NACOS_USERNAME` / `NACOS_PASSWORD` | — | 服务注册 |
-| `SQL_INIT_MODE` | `always` | 设为 `never` 时由 DBA 手工建表 |
+| `SQL_INIT_MODE` | `never` | 业务容器不执行 SQL 初始化 |
+| `SPRING_FLYWAY_ENABLED` | `false` | 业务容器不执行迁移，由 `db-migrate-reader` 负责 |
 | `READER_MAX_IMPORT_BYTES` | `8388608` | 导入文件上限 |
 
 ## 本地开发
