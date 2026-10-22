@@ -1,3 +1,4 @@
+-- 测试环境专用演示数据；生产迁移只使用 classpath:db/migration，不加载本目录。
 INSERT IGNORE INTO reader_book
     (id, title, author, description, chapter_count, created_at, updated_at)
 VALUES
