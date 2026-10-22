@@ -51,6 +51,12 @@ app:
     max-import-bytes: ${READER_MAX_IMPORT_BYTES:8388608}
 
 management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+    propagation:
+      type: W3C
   endpoints:
     web:
       exposure:
@@ -58,3 +64,9 @@ management:
   endpoint:
     health:
       show-details: always
+
+fm:
+  common:
+    error:
+      service-unavailable-code: READER_UNAVAILABLE
+      service-unavailable-message: 阅读服务暂不可用
