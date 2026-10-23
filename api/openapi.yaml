@@ -1,129 +1,364 @@
 openapi: 3.0.3
 info:
   title: tf-reader API
-  version: 0.2.0
+  version: 0.3.0
   description: |
-    FishMatrix 阅读服务：书籍/章节、阅读进度、书签与行内协作批注。
-    内容存储在 MySQL（fm_reader），章节正文由前端格式化为代码式审阅视图。
+    FishMatrix 阅读服务：公共书库、个人书库、书单、分类、访问申请、阅读进度与批注。
+    身份统一由用户中台签发；除健康检查外全部接口需要登录，权限码来自用户中台。
+    私有书对非 owner 未获批时统一返回 404；分享链接只用于发现与发起申请，不代表授权。
+
+security:
+  - bearerAuth: []
 
 paths:
   /api/v1/reader/health:
     get:
+      security: []
       summary: 服务健康检查
       responses:
-        "200":
-          description: 服务正常
+        "200": { description: 服务正常 }
 
   /api/v1/reader/books:
     get:
-      summary: 书单
+      summary: 书库列表
+      parameters:
+        - in: query
+          name: scope
+          schema: { type: string, enum: [public, private], default: public }
+          description: private 等价于“我的书”
+        - in: query
+          name: categoryId
+          schema: { type: integer, format: int64 }
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, default: 0, minimum: 0 }
+        - in: query
+          name: size
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookPage' }
+
+  /api/v1/reader/books/mine:
+    get:
+      summary: 我的书（含私有）
       responses:
         "200":
           description: '{ "books": BookSummary[] }'
+
+  /api/v1/reader/books/shared:
+    get:
+      summary: 我有权访问的他人私有书
+      responses:
+        "200":
+          description: '{ "books": BookSummary[] }'
+
+  /api/v1/reader/books/shared/{shareToken}:
+    get:
+      summary: 分享链接预览（不含章节正文）
+      parameters:
+        - $ref: '#/components/parameters/ShareToken'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookSummary' }
+        "404": { description: 分享链接无效 }
 
   /api/v1/reader/books/{bookId}:
     get:
       summary: 书籍详情与章节列表
       parameters:
-        - in: path
-          name: bookId
-          required: true
-          schema: { type: integer, format: int64 }
+        - $ref: '#/components/parameters/BookId'
       responses:
         "200":
-          description: BookDetail
-        "404":
-          description: 书籍不存在
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookDetail' }
+        "404": { description: 书籍不存在或无权访问 }
+    patch:
+      summary: 修改书籍信息
+      description: owner 可改标题/作者/简介/分类/状态；分类变更需要 reader.category.manage。
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookUpdateRequest' }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookSummary' }
+        "404": { description: 书籍不存在或无权修改 }
+    delete:
+      summary: 删除书籍（owner 或 reader.content.manage.any）
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+      responses:
+        "204": { description: 已删除 }
+        "404": { description: 书籍不存在 }
+        "403": { description: 无权删除 }
 
   /api/v1/reader/books/{bookId}/chapters/{chapterIndex}:
     get:
       summary: 章节正文
       parameters:
-        - in: path
-          name: bookId
-          required: true
-          schema: { type: integer, format: int64 }
-        - in: path
-          name: chapterIndex
-          required: true
-          schema: { type: integer, minimum: 0 }
+        - $ref: '#/components/parameters/BookId'
+        - $ref: '#/components/parameters/ChapterIndex'
       responses:
         "200":
-          description: '{ chapterIndex, title, content, paragraphCount }'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChapterContent' }
+        "404": { description: 书籍不存在或无权访问 }
 
   /api/v1/reader/books/import:
     post:
       summary: 导入 txt（UTF-8/GBK，≤8 MiB）
+      description: |
+        公共库需要 reader.public.upload；个人库需要 reader.private.manage；
+        指定 categoryId 需要 reader.category.manage。scope 默认 PRIVATE。
       requestBody:
         content:
           multipart/form-data:
             schema:
               type: object
+              required: [file]
               properties:
                 file: { type: string, format: binary }
-                title: { type: string }
-                author: { type: string }
+                scope: { type: string, enum: [PUBLIC, PRIVATE], default: PRIVATE }
+                title: { type: string, maxLength: 255 }
+                author: { type: string, maxLength: 128 }
+                categoryId: { type: integer, format: int64 }
       responses:
         "201":
-          description: BookSummary
-        "400":
-          description: 文件为空或未解析到章节
-        "413":
-          description: 文件过大
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookSummary' }
+        "400": { description: 文件为空、格式不支持或未解析到章节 }
+        "403": { description: 缺少上传权限 }
+        "413": { description: 文件过大 }
+
+  /api/v1/reader/books/{bookId}/share:
+    post:
+      summary: 生成私有书分享链接（仅 owner）
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareLink' }
+        "404": { description: 书籍不存在或不是 owner }
+
+  /api/v1/reader/books/{bookId}/access-requests:
+    post:
+      summary: 发起访问申请
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccessRequestCreate' }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccessRequestView' }
+        "404": { description: 书籍不存在 }
+        "429": { description: 被拒绝后 24 小时冷却期内重复申请 }
+
+  /api/v1/reader/access-requests/mine:
+    get:
+      summary: 我发出的访问申请
+      responses:
+        "200":
+          description: '{ "requests": AccessRequestView[] }'
+
+  /api/v1/reader/access-requests/received:
+    get:
+      summary: 我收到的访问申请
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [PENDING, APPROVED, REJECTED, CANCELLED, REVOKED] }
+      responses:
+        "200":
+          description: '{ "requests": AccessRequestView[] }'
+
+  /api/v1/reader/access-requests/{requestId}/approve:
+    post:
+      summary: owner 同意申请
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        "200": { description: AccessRequestView（APPROVED） }
+        "404": { description: 申请不存在或不是接收人 }
+  /api/v1/reader/access-requests/{requestId}/reject:
+    post:
+      summary: owner 拒绝申请
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message: { type: string, maxLength: 500 }
+      responses:
+        "200": { description: AccessRequestView（REJECTED） }
+  /api/v1/reader/access-requests/{requestId}/revoke:
+    post:
+      summary: owner 收回已授予的访问
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        "200": { description: AccessRequestView（REVOKED） }
+  /api/v1/reader/access-requests/{requestId}/cancel:
+    post:
+      summary: 申请人撤销待处理申请
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        "200": { description: AccessRequestView（CANCELLED） }
+
+  /api/v1/reader/categories:
+    get:
+      summary: 分类列表
+      responses:
+        "200": { description: '{ "categories": Category[] }' }
+    post:
+      summary: 新建分类（reader.category.manage）
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CategoryRequest' }
+      responses:
+        "201": { description: Category }
+        "403": { description: 缺少 reader.category.manage }
+
+  /api/v1/reader/categories/{categoryId}:
+    put:
+      summary: 修改分类（reader.category.manage）
+      parameters:
+        - in: path
+          name: categoryId
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CategoryRequest' }
+      responses:
+        "200": { description: Category }
+    delete:
+      summary: 删除分类（reader.category.manage）
+      parameters:
+        - in: path
+          name: categoryId
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "204": { description: 已删除 }
+
+  /api/v1/reader/shelves:
+    get:
+      summary: 我的书单
+      responses:
+        "200": { description: '{ "shelves": Shelf[] }' }
+    post:
+      summary: 新建书单（reader.private.manage）
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShelfRequest' }
+      responses:
+        "201": { description: Shelf }
+
+  /api/v1/reader/shelves/{shelfId}:
+    get:
+      summary: 书单详情
+      parameters:
+        - $ref: '#/components/parameters/ShelfId'
+      responses:
+        "200": { description: ShelfDetail }
+        "404": { description: 书单不存在或不属于当前用户 }
+    put:
+      summary: 修改书单
+      parameters:
+        - $ref: '#/components/parameters/ShelfId'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShelfRequest' }
+      responses:
+        "200": { description: Shelf }
+    delete:
+      summary: 删除书单
+      parameters:
+        - $ref: '#/components/parameters/ShelfId'
+      responses:
+        "204": { description: 已删除 }
+
+  /api/v1/reader/shelves/{shelfId}/books/{bookId}:
+    post:
+      summary: 书单加入书籍
+      parameters:
+        - $ref: '#/components/parameters/ShelfId'
+        - $ref: '#/components/parameters/BookId'
+      responses:
+        "204": { description: 已加入 }
+    delete:
+      summary: 书单移除书籍
+      parameters:
+        - $ref: '#/components/parameters/ShelfId'
+        - $ref: '#/components/parameters/BookId'
+      responses:
+        "204": { description: 已移除 }
 
   /api/v1/reader/books/{bookId}/progress:
     get:
-      summary: 读取进度
+      summary: 读取我的阅读进度
       parameters:
-        - in: path
-          name: bookId
-          required: true
-          schema: { type: integer, format: int64 }
-        - in: query
-          name: userId
-          required: true
-          schema: { type: string, pattern: '^[A-Za-z0-9_-]{1,64}$' }
+        - $ref: '#/components/parameters/BookId'
       responses:
         "200":
           description: '{ "progress": ReadingProgress | null }'
     put:
-      summary: 保存进度
+      summary: 保存我的阅读进度
+      parameters:
+        - $ref: '#/components/parameters/BookId'
       requestBody:
-        required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/ProgressRequest'
+            schema: { $ref: '#/components/schemas/ProgressRequest' }
       responses:
-        "204":
-          description: 已保存
+        "204": { description: 已保存 }
 
   /api/v1/reader/books/{bookId}/bookmarks:
     get:
-      summary: 书签列表
+      summary: 我的书签
       parameters:
-        - in: path
-          name: bookId
-          required: true
-          schema: { type: integer, format: int64 }
-        - in: query
-          name: userId
-          required: true
-          schema: { type: string }
+        - $ref: '#/components/parameters/BookId'
       responses:
-        "200":
-          description: '{ "bookmarks": Bookmark[] }'
+        "200": { description: '{ "bookmarks": Bookmark[] }' }
     post:
       summary: 添加书签（相同段落幂等）
+      parameters:
+        - $ref: '#/components/parameters/BookId'
       requestBody:
-        required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/BookmarkRequest'
+            schema: { $ref: '#/components/schemas/BookmarkRequest' }
       responses:
-        "201":
-          description: Bookmark
+        "201": { description: Bookmark }
 
   /api/v1/reader/bookmarks/{bookmarkId}:
     delete:
@@ -133,28 +368,16 @@ paths:
           name: bookmarkId
           required: true
           schema: { type: integer, format: int64 }
-        - in: query
-          name: userId
-          required: true
-          schema: { type: string }
       responses:
-        "204":
-          description: 已删除
-        "404":
-          description: 书签不存在或不属于当前用户
+        "204": { description: 已删除 }
+        "404": { description: 书签不存在或不属于当前用户 }
 
   /api/v1/reader/books/{bookId}/chapters/{chapterIndex}/annotations:
     get:
       summary: 增量拉取章节批注
       parameters:
-        - in: path
-          name: bookId
-          required: true
-          schema: { type: integer, format: int64 }
-        - in: path
-          name: chapterIndex
-          required: true
-          schema: { type: integer }
+        - $ref: '#/components/parameters/BookId'
+        - $ref: '#/components/parameters/ChapterIndex'
         - in: query
           name: afterId
           schema: { type: integer, format: int64, default: 0 }
@@ -162,21 +385,52 @@ paths:
           name: limit
           schema: { type: integer, default: 200, maximum: 200 }
       responses:
-        "200":
-          description: '{ "annotations": Annotation[] }，id 升序'
+        "200": { description: '{ "annotations": Annotation[] }，id 升序' }
     post:
-      summary: 添加评审意见
+      summary: 添加批注
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+        - $ref: '#/components/parameters/ChapterIndex'
       requestBody:
-        required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/AnnotationRequest'
+            schema: { $ref: '#/components/schemas/AnnotationRequest' }
       responses:
-        "201":
-          description: Annotation
+        "201": { description: Annotation }
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  parameters:
+    BookId:
+      in: path
+      name: bookId
+      required: true
+      schema: { type: integer, format: int64 }
+    ChapterIndex:
+      in: path
+      name: chapterIndex
+      required: true
+      schema: { type: integer, minimum: 0 }
+    ShareToken:
+      in: path
+      name: shareToken
+      required: true
+      schema: { type: string }
+    RequestId:
+      in: path
+      name: requestId
+      required: true
+      schema: { type: integer, format: int64 }
+    ShelfId:
+      in: path
+      name: shelfId
+      required: true
+      schema: { type: integer, format: int64 }
+
   schemas:
     BookSummary:
       type: object
@@ -186,7 +440,110 @@ components:
         author: { type: string }
         description: { type: string }
         chapterCount: { type: integer }
+        scope: { type: string, enum: [PUBLIC, PRIVATE] }
+        ownerId: { type: integer, format: int64, nullable: true }
+        ownerNickname: { type: string, nullable: true }
+        categoryId: { type: integer, format: int64, nullable: true }
+        categoryName: { type: string, nullable: true }
+        status: { type: string, enum: [VISIBLE, HIDDEN] }
+        mine: { type: boolean }
+        canEdit: { type: boolean }
+        canDelete: { type: boolean }
+        createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    BookPage:
+      type: object
+      properties:
+        books:
+          type: array
+          items: { $ref: '#/components/schemas/BookSummary' }
+        total: { type: integer, format: int64 }
+        page: { type: integer }
+        size: { type: integer }
+    BookDetail:
+      type: object
+      properties:
+        book: { $ref: '#/components/schemas/BookSummary' }
+        chapters:
+          type: array
+          items:
+            type: object
+            properties:
+              chapterIndex: { type: integer }
+              title: { type: string }
+              wordCount: { type: integer }
+    ChapterContent:
+      type: object
+      properties:
+        chapterIndex: { type: integer }
+        title: { type: string }
+        content: { type: string }
+        paragraphCount: { type: integer }
+    BookUpdateRequest:
+      type: object
+      properties:
+        title: { type: string, maxLength: 255 }
+        author: { type: string, maxLength: 128 }
+        description: { type: string, maxLength: 1024 }
+        categoryId: { type: integer, format: int64, nullable: true }
+        status: { type: string, enum: [VISIBLE, HIDDEN] }
+    ShareLink:
+      type: object
+      properties:
+        shareToken: { type: string }
+    AccessRequestCreate:
+      type: object
+      properties:
+        shareToken: { type: string }
+        message: { type: string, maxLength: 500 }
+    AccessRequestView:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        bookId: { type: integer, format: int64 }
+        bookTitle: { type: string }
+        ownerId: { type: integer, format: int64 }
+        ownerNickname: { type: string }
+        requesterId: { type: integer, format: int64 }
+        requesterNickname: { type: string }
+        status: { type: string, enum: [PENDING, APPROVED, REJECTED, CANCELLED, REVOKED] }
+        message: { type: string, nullable: true }
+        decisionMessage: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        decidedAt: { type: string, format: date-time, nullable: true }
+    Category:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        sortOrder: { type: integer }
+    CategoryRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 64 }
+        sortOrder: { type: integer }
+    Shelf:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        bookCount: { type: integer }
+        updatedAt: { type: string, format: date-time }
+    ShelfDetail:
+      type: object
+      properties:
+        shelf: { $ref: '#/components/schemas/Shelf' }
+        books:
+          type: array
+          items: { $ref: '#/components/schemas/BookSummary' }
+    ShelfRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 64 }
+        description: { type: string, maxLength: 500 }
     ReadingProgress:
       type: object
       properties:
@@ -195,16 +552,14 @@ components:
         updatedAt: { type: string, format: date-time }
     ProgressRequest:
       type: object
-      required: [userId, chapterIndex, scrollRatio]
+      required: [chapterIndex, scrollRatio]
       properties:
-        userId: { type: string }
         chapterIndex: { type: integer, minimum: 0 }
         scrollRatio: { type: number, minimum: 0, maximum: 1 }
     BookmarkRequest:
       type: object
-      required: [userId, chapterIndex, paragraphIndex]
+      required: [chapterIndex, paragraphIndex]
       properties:
-        userId: { type: string }
         chapterIndex: { type: integer }
         paragraphIndex: { type: integer, minimum: 0 }
         excerpt: { type: string, maxLength: 512 }
@@ -220,10 +575,8 @@ components:
         createdAt: { type: string, format: date-time }
     AnnotationRequest:
       type: object
-      required: [userId, nickname, paragraphIndex, content]
+      required: [paragraphIndex, content]
       properties:
-        userId: { type: string }
-        nickname: { type: string, maxLength: 32 }
         paragraphIndex: { type: integer, minimum: 0 }
         content: { type: string, maxLength: 500 }
     Annotation:

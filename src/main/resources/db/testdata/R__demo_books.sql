@@ -1,9 +1,14 @@
 -- 测试环境专用演示数据；生产迁移只使用 classpath:db/migration，不加载本目录。
-INSERT IGNORE INTO reader_book
-    (id, title, author, description, chapter_count, created_at, updated_at)
+INSERT IGNORE INTO reader_category (id, name, sort_order, created_at)
 VALUES
-    (1, '古文观止·精选', '历代名家', '内置演示代码审阅数据集', 3,
-     '2026-10-18 09:00:00.000', '2026-10-18 09:00:00.000');
+    (1, '古典文学', 10, '2026-10-18 09:00:00.000');
+
+INSERT IGNORE INTO reader_book
+    (id, title, author, description, chapter_count, scope, owner_id, owner_nickname,
+     category_id, status, created_at, updated_at)
+VALUES
+    (1, '古文观止·精选', '历代名家', '内置演示代码审阅数据集', 3, 'PUBLIC', NULL, '',
+     1, 'VISIBLE', '2026-10-18 09:00:00.000', '2026-10-18 09:00:00.000');
 
 INSERT IGNORE INTO reader_chapter
     (book_id, chapter_index, title, content, word_count)
