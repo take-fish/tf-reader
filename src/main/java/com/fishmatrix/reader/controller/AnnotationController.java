@@ -1,5 +1,6 @@
 package com.fishmatrix.reader.controller;
 
+import com.fishmatrix.common.auth.UserContext;
 import com.fishmatrix.reader.model.Annotation;
 import com.fishmatrix.reader.model.AnnotationRequest;
 import com.fishmatrix.reader.service.AnnotationService;
@@ -32,7 +33,7 @@ public class AnnotationController {
             @RequestParam(defaultValue = "0") long afterId,
             @RequestParam(defaultValue = "200") int limit) {
         List<Annotation> annotations = annotationService.listBookAnnotations(
-                bookId, chapterIndex, afterId, limit);
+                bookId, chapterIndex, afterId, limit, UserContext.require());
         return Map.of("annotations", annotations);
     }
 
@@ -42,6 +43,7 @@ public class AnnotationController {
             @PathVariable long bookId,
             @PathVariable int chapterIndex,
             @RequestBody AnnotationRequest request) {
-        return annotationService.addAnnotation(bookId, chapterIndex, request);
+        return annotationService.addAnnotation(
+                bookId, chapterIndex, request, UserContext.require());
     }
 }

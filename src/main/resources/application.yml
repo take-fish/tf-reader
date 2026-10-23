@@ -73,3 +73,18 @@ fm:
     error:
       service-unavailable-code: READER_UNAVAILABLE
       service-unavailable-message: 阅读服务暂不可用
+  # 统一鉴权：身份由网关签名头注入；直连调试可用 Bearer 回退到用户中台。
+  auth:
+    enabled: ${FM_AUTH_ENABLED:true}
+    user-service-url: ${TF_USER_URL:http://127.0.0.1:8101}
+    identity-secret: ${FM_IDENTITY_SECRET:}
+    allow-bearer-fallback: ${FM_AUTH_BEARER_FALLBACK:true}
+    cache-ttl: ${FM_AUTH_CACHE_TTL:30s}
+    public-paths:
+      - /api/v1/reader/health
+      - /api/v1/reader/meta
+  # 书籍原文落本地卷（Docker 命名卷），章节仍存数据库，权限只由数据库记录决定。
+  storage:
+    enabled: ${FM_STORAGE_ENABLED:true}
+    base-dir: ${FM_STORAGE_BASE_DIR:./data/files}
+    max-file-bytes: ${FM_STORAGE_MAX_BYTES:8388608}
