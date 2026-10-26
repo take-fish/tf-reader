@@ -12,9 +12,9 @@
     <if test="categoryId != null">
       AND b.category_id = #{categoryId}
     </if>
-    <if test="keyword != null and keyword != ''">
-      AND (LOWER(b.title) LIKE CONCAT('%', LOWER(#{keyword}), '%')
-        OR LOWER(b.author) LIKE CONCAT('%', LOWER(#{keyword}), '%'))
+    <if test="keyword != null and keyword.trim() != ''">
+      AND (LOWER(b.title) LIKE CONCAT('%', LOWER(TRIM(#{keyword})), '%')
+        OR LOWER(b.author) LIKE CONCAT('%', LOWER(TRIM(#{keyword})), '%'))
     </if>
     ORDER BY b.updated_at DESC, b.id DESC
   </select>

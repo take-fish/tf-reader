@@ -1,7 +1,7 @@
 # tf-reader 数据访问层重构 · 设计
 
 - 日期：2026-10-26
-- 状态：待评审
+- 状态：已实施（Phase 1 完成）
 - 分支：`feature/reader-refactor`（基点待确认）
 - 关联：`AGENTS.md` §8 技术债 P0/P1
 
@@ -166,7 +166,7 @@ ALTER TABLE reader_annotation MODIFY user_id BIGINT NOT NULL;
 
 | 项 | 做法 |
 |---|---|
-| 分页 | `PaginationInnerInterceptor(DbType.MYSQL)`；`BookPage` 由 `Page<T>` 组装，响应结构不变 |
+| 分页 | `PaginationInnerInterceptor(DbType.MYSQL)`；`BookPage` 由 `Page<T>` 组装，响应结构不变；对外 page 为 0-based、MP Page 为 1-based，Phase 2 接线时必须换算 |
 | 时间字段 | `MetaObjectHandler` 自动填充 `created_at` / `updated_at` |
 | 事务 | 保持在 Service 层 `@Transactional`，边界不变 |
 | 级联删除 | `deleteBook` 的多表删除集中到 `ReaderBookMapper` 的一个 XML 方法 |

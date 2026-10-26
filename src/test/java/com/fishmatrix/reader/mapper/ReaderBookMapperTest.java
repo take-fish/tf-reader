@@ -117,6 +117,16 @@ class ReaderBookMapperTest {
     }
 
     @Test
+    @DisplayName("keyword 空白与前后空格的处理与旧实现一致")
+    void keywordWhitespaceSemantics() {
+        var blank = bookMapper.selectPublicPage(new Page<>(1, 10), null, "   ");
+        assertThat(blank.getTotal()).isEqualTo(3);
+
+        var padded = bookMapper.selectPublicPage(new Page<>(1, 10), null, " 观止 ");
+        assertThat(padded.getRecords()).extracting(ReaderBook::getTitle).containsExactly("古文观止");
+    }
+
+    @Test
     @DisplayName("自动填充写入 created_at / updated_at")
     void auditFieldsAutoFilled() {
         ReaderBook book = new ReaderBook();
