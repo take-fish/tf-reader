@@ -36,10 +36,12 @@ class BookConverterTest {
         assertThat(summary.id()).isEqualTo(7L);
         assertThat(summary.title()).isEqualTo("古文观止");
         assertThat(summary.author()).isEqualTo("吴楚材");
+        assertThat(summary.description()).isEqualTo("desc");
         assertThat(summary.chapterCount()).isEqualTo(3);
         assertThat(summary.scope()).isEqualTo("PRIVATE");
         assertThat(summary.ownerId()).isEqualTo(42L);
         assertThat(summary.ownerNickname()).isEqualTo("小鱼");
+        assertThat(summary.categoryId()).isEqualTo(5L);
         assertThat(summary.categoryName()).isEqualTo("古文");
         assertThat(summary.status()).isEqualTo("VISIBLE");
         assertThat(summary.mine()).isTrue();
@@ -47,5 +49,10 @@ class BookConverterTest {
         assertThat(summary.canDelete()).isFalse();
         assertThat(summary.createdAt()).isEqualTo(Instant.parse("2026-10-01T00:00:00Z"));
         assertThat(summary.updatedAt()).isEqualTo(Instant.parse("2026-10-02T00:00:00Z"));
+
+        BookSummary second = converter.toSummary(book, false, true, true);
+        assertThat(second.mine()).isFalse();
+        assertThat(second.canEdit()).isTrue();
+        assertThat(second.canDelete()).isTrue();
     }
 }
