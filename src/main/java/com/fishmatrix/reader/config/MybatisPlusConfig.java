@@ -28,6 +28,7 @@ public class MybatisPlusConfig {
                 Instant now = Instant.now();
                 strictInsertFill(metaObject, "createdAt", Instant.class, now);
                 strictInsertFill(metaObject, "updatedAt", Instant.class, now);
+                strictInsertFill(metaObject, "addedAt", Instant.class, now);
             }
 
             @Override
