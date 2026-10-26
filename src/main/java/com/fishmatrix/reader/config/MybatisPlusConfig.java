@@ -19,7 +19,7 @@ public class MybatisPlusConfig {
         return interceptor;
     }
 
-    /** 统一维护 created_at / updated_at，业务代码不再手写 Instant.now()。 */
+    /** 统一维护 created_at / updated_at / added_at，业务代码不再手写 Instant.now()。 */
     @Bean
     public MetaObjectHandler auditMetaObjectHandler() {
         return new MetaObjectHandler() {
