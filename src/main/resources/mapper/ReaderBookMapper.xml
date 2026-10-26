@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishmatrix.reader.mapper.ReaderBookMapper">
+
+  <select id="selectPublicPage" resultType="com.fishmatrix.reader.entity.ReaderBook">
+    SELECT b.*, c.name AS category_name
+    FROM reader_book b
+    LEFT JOIN reader_category c ON c.id = b.category_id
+    WHERE b.scope = 'PUBLIC'
+      AND b.status = 'VISIBLE'
+    <if test="categoryId != null">
+      AND b.category_id = #{categoryId}
+    </if>
+    <if test="keyword != null and keyword != ''">
+      AND (LOWER(b.title) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+        OR LOWER(b.author) LIKE CONCAT('%', LOWER(#{keyword}), '%'))
+    </if>
+    ORDER BY b.updated_at DESC, b.id DESC
+  </select>
+
+</mapper>
