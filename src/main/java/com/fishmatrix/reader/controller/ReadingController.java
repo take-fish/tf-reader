@@ -1,6 +1,7 @@
 package com.fishmatrix.reader.controller;
 
 import com.fishmatrix.common.auth.UserContext;
+import com.fishmatrix.common.error.ApiException;
 import com.fishmatrix.reader.model.Bookmark;
 import com.fishmatrix.reader.model.BookmarkRequest;
 import com.fishmatrix.reader.model.ProgressRequest;
@@ -41,7 +42,7 @@ public class ReadingController {
             @PathVariable long bookId,
             @RequestBody ProgressRequest request) {
         if (request == null) {
-            throw new IllegalArgumentException("请求体不能为空");
+            throw ApiException.badRequest("请求体不能为空");
         }
         readingService.saveProgress(
                 UserContext.require(),

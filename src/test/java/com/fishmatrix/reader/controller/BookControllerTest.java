@@ -3,6 +3,7 @@ package com.fishmatrix.reader.controller;
 import com.fishmatrix.common.auth.CurrentUser;
 import com.fishmatrix.common.auth.UserContext;
 import com.fishmatrix.common.autoconfigure.FishCommonProperties;
+import com.fishmatrix.common.error.ApiException;
 import com.fishmatrix.common.error.GlobalExceptionHandler;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -14,12 +15,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fishmatrix.reader.error.NotFoundException;
 import com.fishmatrix.reader.model.BookDetail;
 import com.fishmatrix.reader.model.BookPage;
 import com.fishmatrix.reader.model.BookSummary;
 import com.fishmatrix.reader.model.ChapterContent;
 import com.fishmatrix.reader.model.ChapterSummary;
-import com.fishmatrix.reader.model.NotFoundException;
 import com.fishmatrix.reader.service.LibraryService;
 import java.time.Instant;
 import java.util.List;
@@ -127,7 +128,7 @@ class BookControllerTest {
     @Test
     void mapsBadRequest() throws Exception {
         when(libraryService.getChapter(eq(1L), eq(5), any()))
-                .thenThrow(new IllegalArgumentException("章节不存在"));
+                .thenThrow(ApiException.badRequest("章节不存在"));
 
         mockMvc.perform(get("/api/v1/reader/books/1/chapters/5"))
                 .andExpect(status().isBadRequest())

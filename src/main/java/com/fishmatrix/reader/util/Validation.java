@@ -1,5 +1,6 @@
 package com.fishmatrix.reader.util;
 
+import com.fishmatrix.common.error.ApiException;
 import java.util.regex.Pattern;
 
 public final class Validation {
@@ -11,23 +12,23 @@ public final class Validation {
 
     public static void requireUserId(String userId) {
         if (userId == null || !USER_ID.matcher(userId).matches()) {
-            throw new IllegalArgumentException("userId 格式不合法");
+            throw ApiException.badRequest("userId 格式不合法");
         }
     }
 
     public static void requireChapterIndex(int chapterIndex, int chapterCount) {
         if (chapterIndex < 0 || chapterIndex >= chapterCount) {
-            throw new IllegalArgumentException("章节不存在");
+            throw ApiException.badRequest("章节不存在");
         }
     }
 
     public static String text(String value, int maxLength, String field, boolean required) {
         String cleaned = value == null ? "" : value.strip();
         if (required && cleaned.isEmpty()) {
-            throw new IllegalArgumentException(field + "不能为空");
+            throw ApiException.badRequest(field + "不能为空");
         }
         if (cleaned.codePointCount(0, cleaned.length()) > maxLength) {
-            throw new IllegalArgumentException(field + "过长");
+            throw ApiException.badRequest(field + "过长");
         }
         return cleaned;
     }

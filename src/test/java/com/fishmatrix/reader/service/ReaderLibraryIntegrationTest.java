@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fishmatrix.common.auth.CurrentUser;
 import com.fishmatrix.common.error.ApiException;
+import com.fishmatrix.reader.error.NotFoundException;
 import com.fishmatrix.reader.model.AccessRequestCreate;
 import com.fishmatrix.reader.model.AccessRequestView;
 import com.fishmatrix.reader.model.BookPage;
@@ -12,7 +13,6 @@ import com.fishmatrix.reader.model.BookSummary;
 import com.fishmatrix.reader.model.BookUpdateRequest;
 import com.fishmatrix.reader.model.Category;
 import com.fishmatrix.reader.model.CategoryRequest;
-import com.fishmatrix.reader.model.NotFoundException;
 import com.fishmatrix.reader.model.Shelf;
 import com.fishmatrix.reader.model.ShelfDetail;
 import com.fishmatrix.reader.model.ShelfRequest;
