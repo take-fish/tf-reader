@@ -1,8 +1,9 @@
 package com.fishmatrix.reader.service;
 
+import com.fishmatrix.common.error.ApiException;
+import com.fishmatrix.reader.error.NotFoundException;
 import com.fishmatrix.reader.model.Category;
 import com.fishmatrix.reader.model.CategoryRequest;
-import com.fishmatrix.reader.model.NotFoundException;
 import com.fishmatrix.reader.repository.CategoryRepository;
 import com.fishmatrix.reader.util.Validation;
 import java.time.Instant;
@@ -25,7 +26,7 @@ public class CategoryService {
 
     @Transactional
     public Category create(CategoryRequest request) {
-        if (request == null) throw new IllegalArgumentException("请求体不能为空");
+        if (request == null) throw ApiException.badRequest("请求体不能为空");
         String name = Validation.text(request.name(), 64, "分类名称", true);
         int sortOrder = request.sortOrder() == null ? 0 : request.sortOrder();
         long id = repository.insert(name, sortOrder, Instant.now());
@@ -35,7 +36,7 @@ public class CategoryService {
 
     @Transactional
     public Category update(long id, CategoryRequest request) {
-        if (request == null) throw new IllegalArgumentException("请求体不能为空");
+        if (request == null) throw ApiException.badRequest("请求体不能为空");
         Category existing = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("分类不存在"));
         String name = request.name() == null

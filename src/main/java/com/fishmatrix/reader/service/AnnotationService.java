@@ -1,10 +1,11 @@
 package com.fishmatrix.reader.service;
 
 import com.fishmatrix.common.auth.CurrentUser;
+import com.fishmatrix.common.error.ApiException;
+import com.fishmatrix.reader.error.NotFoundException;
 import com.fishmatrix.reader.model.Annotation;
 import com.fishmatrix.reader.model.AnnotationRequest;
 import com.fishmatrix.reader.model.ChapterContent;
-import com.fishmatrix.reader.model.NotFoundException;
 import com.fishmatrix.reader.repository.AnnotationRepository;
 import com.fishmatrix.reader.repository.BookRepository;
 import com.fishmatrix.reader.repository.BookRepository.BookRecord;
@@ -43,14 +44,14 @@ public class AnnotationService {
     public Annotation addAnnotation(long bookId, int chapterIndex, AnnotationRequest request,
             CurrentUser viewer) {
         if (request == null) {
-            throw new IllegalArgumentException("请求体不能为空");
+            throw ApiException.badRequest("请求体不能为空");
         }
         BookRecord book = libraryService.requireReadable(bookId, viewer);
         Validation.requireChapterIndex(chapterIndex, book.chapterCount());
         ChapterContent chapter = bookRepository.findChapter(bookId, chapterIndex)
                 .orElseThrow(() -> new NotFoundException("章节不存在"));
         if (request.paragraphIndex() < 0 || request.paragraphIndex() >= chapter.paragraphCount()) {
-            throw new IllegalArgumentException("段落索引不合法");
+            throw ApiException.badRequest("段落索引不合法");
         }
         String content = Validation.text(request.content(), 500, "评审意见", true);
         return annotationRepository.insert(
