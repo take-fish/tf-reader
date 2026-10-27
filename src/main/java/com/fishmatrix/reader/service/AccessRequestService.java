@@ -4,6 +4,7 @@ import com.fishmatrix.common.auth.CurrentUser;
 import com.fishmatrix.common.error.ApiException;
 import com.fishmatrix.reader.model.AccessRequestCreate;
 import com.fishmatrix.reader.model.AccessRequestView;
+import com.fishmatrix.reader.model.NotFoundException;
 import com.fishmatrix.reader.repository.AccessRequestRepository;
 import com.fishmatrix.reader.repository.BookRepository;
 import com.fishmatrix.reader.repository.BookRepository.BookRecord;
@@ -67,7 +68,8 @@ public class AccessRequestService {
         }
         long id = repository.upsertPending(bookId, book.ownerId(), viewer.id(),
                 Validation.truncate(viewer.nickname(), 32), message, now);
-        return repository.findById(id).orElseThrow();
+        return repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("申请不存在"));
     }
 
     public List<AccessRequestView> mine(CurrentUser viewer) {
@@ -82,7 +84,8 @@ public class AccessRequestService {
     public AccessRequestView approve(long id, CurrentUser viewer) {
         AccessRequestView request = requireOwnerPending(id, viewer);
         repository.decide(request.id(), "APPROVED", "", Instant.now());
-        return repository.findById(id).orElseThrow();
+        return repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("申请不存在"));
     }
 
     @Transactional
@@ -90,7 +93,8 @@ public class AccessRequestService {
         AccessRequestView request = requireOwnerPending(id, viewer);
         repository.decide(request.id(), "REJECTED",
                 Validation.text(reason, 255, "拒绝理由", false), Instant.now());
-        return repository.findById(id).orElseThrow();
+        return repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("申请不存在"));
     }
 
     @Transactional
@@ -104,7 +108,8 @@ public class AccessRequestService {
             throw ApiException.conflict("INVALID_STATE", "只有已通过的申请才能撤销");
         }
         repository.decide(id, "REVOKED", "", Instant.now());
-        return repository.findById(id).orElseThrow();
+        return repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("申请不存在"));
     }
 
     @Transactional
@@ -118,7 +123,8 @@ public class AccessRequestService {
             throw ApiException.conflict("INVALID_STATE", "只有待审批的申请才能取消");
         }
         repository.decide(id, "CANCELLED", "", Instant.now());
-        return repository.findById(id).orElseThrow();
+        return repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("申请不存在"));
     }
 
     private AccessRequestView requireOwnerPending(long id, CurrentUser viewer) {
