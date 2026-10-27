@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fishmatrix.reader.domain.BookScope;
+import com.fishmatrix.reader.domain.BookStatus;
 import java.time.Instant;
 import lombok.Data;
 
@@ -19,11 +21,11 @@ public class ReaderBook {
     private String author;
     private String description;
     private Integer chapterCount;
-    private String scope;
+    private BookScope scope;
     private Long ownerId;
     private String ownerNickname;
     private Long categoryId;
-    private String status;
+    private BookStatus status;
     private String shareToken;
     private String storageKey;
     private String sourceFilename;

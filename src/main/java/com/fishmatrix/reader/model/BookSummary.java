@@ -1,5 +1,7 @@
 package com.fishmatrix.reader.model;
 
+import com.fishmatrix.reader.domain.BookScope;
+import com.fishmatrix.reader.domain.BookStatus;
 import java.time.Instant;
 
 /**
@@ -12,12 +14,12 @@ public record BookSummary(
         String author,
         String description,
         int chapterCount,
-        String scope,
+        BookScope scope,
         Long ownerId,
         String ownerNickname,
         Long categoryId,
         String categoryName,
-        String status,
+        BookStatus status,
         boolean mine,
         boolean canEdit,
         boolean canDelete,

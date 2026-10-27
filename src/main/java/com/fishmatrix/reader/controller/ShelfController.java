@@ -4,10 +4,10 @@ import com.fishmatrix.common.auth.RequirePermission;
 import com.fishmatrix.common.auth.UserContext;
 import com.fishmatrix.reader.model.Shelf;
 import com.fishmatrix.reader.model.ShelfDetail;
+import com.fishmatrix.reader.model.ShelfList;
 import com.fishmatrix.reader.model.ShelfRequest;
 import com.fishmatrix.reader.service.ShelfService;
-import java.util.List;
-import java.util.Map;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,9 +31,8 @@ public class ShelfController {
     }
 
     @GetMapping("/shelves")
-    public Map<String, Object> list() {
-        List<Shelf> shelves = shelfService.list(UserContext.require());
-        return Map.of("shelves", shelves);
+    public ShelfList list() {
+        return new ShelfList(shelfService.list(UserContext.require()));
     }
 
     @GetMapping("/shelves/{shelfId}")
@@ -43,12 +42,12 @@ public class ShelfController {
 
     @PostMapping("/shelves")
     @ResponseStatus(HttpStatus.CREATED)
-    public Shelf create(@RequestBody ShelfRequest request) {
+    public Shelf create(@Valid @RequestBody ShelfRequest request) {
         return shelfService.create(request, UserContext.require());
     }
 
     @PutMapping("/shelves/{shelfId}")
-    public Shelf update(@PathVariable long shelfId, @RequestBody ShelfRequest request) {
+    public Shelf update(@PathVariable long shelfId, @Valid @RequestBody ShelfRequest request) {
         return shelfService.update(shelfId, request, UserContext.require());
     }
 

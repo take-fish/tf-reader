@@ -2,6 +2,8 @@ package com.fishmatrix.reader.converter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fishmatrix.reader.domain.BookScope;
+import com.fishmatrix.reader.domain.BookStatus;
 import com.fishmatrix.reader.entity.ReaderBook;
 import com.fishmatrix.reader.model.BookSummary;
 import java.time.Instant;
@@ -22,12 +24,12 @@ class BookConverterTest {
         book.setAuthor("吴楚材");
         book.setDescription("desc");
         book.setChapterCount(3);
-        book.setScope("PRIVATE");
+        book.setScope(BookScope.PRIVATE);
         book.setOwnerId(42L);
         book.setOwnerNickname("小鱼");
         book.setCategoryId(5L);
         book.setCategoryName("古文");
-        book.setStatus("VISIBLE");
+        book.setStatus(BookStatus.VISIBLE);
         book.setCreatedAt(Instant.parse("2026-10-01T00:00:00Z"));
         book.setUpdatedAt(Instant.parse("2026-10-02T00:00:00Z"));
 
@@ -38,12 +40,12 @@ class BookConverterTest {
         assertThat(summary.author()).isEqualTo("吴楚材");
         assertThat(summary.description()).isEqualTo("desc");
         assertThat(summary.chapterCount()).isEqualTo(3);
-        assertThat(summary.scope()).isEqualTo("PRIVATE");
+        assertThat(summary.scope()).isEqualTo(BookScope.PRIVATE);
         assertThat(summary.ownerId()).isEqualTo(42L);
         assertThat(summary.ownerNickname()).isEqualTo("小鱼");
         assertThat(summary.categoryId()).isEqualTo(5L);
         assertThat(summary.categoryName()).isEqualTo("古文");
-        assertThat(summary.status()).isEqualTo("VISIBLE");
+        assertThat(summary.status()).isEqualTo(BookStatus.VISIBLE);
         assertThat(summary.mine()).isTrue();
         assertThat(summary.canEdit()).isTrue();
         assertThat(summary.canDelete()).isFalse();

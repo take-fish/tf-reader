@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fishmatrix.common.auth.CurrentUser;
 import com.fishmatrix.common.error.ApiException;
+import com.fishmatrix.reader.domain.AccessRequestStatus;
+import com.fishmatrix.reader.domain.BookScope;
+import com.fishmatrix.reader.domain.BookStatus;
 import com.fishmatrix.reader.error.NotFoundException;
 import com.fishmatrix.reader.model.AccessRequestCreate;
 import com.fishmatrix.reader.model.AccessRequestView;
@@ -60,7 +63,7 @@ class ReaderLibraryIntegrationTest {
                 .isEqualTo(403);
 
         BookSummary book = importBook("public", owner);
-        assertThat(book.scope()).isEqualTo("PUBLIC");
+        assertThat(book.scope()).isEqualTo(BookScope.PUBLIC);
         assertThat(book.ownerId()).isEqualTo(owner.id());
         assertThat(book.chapterCount()).isEqualTo(2);
         assertThat(book.mine()).isTrue();
@@ -99,7 +102,7 @@ class ReaderLibraryIntegrationTest {
 
         AccessRequestView request = accessRequestService.request(
                 book.id(), new AccessRequestCreate(token, "想看"), stranger);
-        assertThat(request.status()).isEqualTo("PENDING");
+        assertThat(request.status()).isEqualTo(AccessRequestStatus.PENDING);
         assertThat(accessRequestService.request(
                 book.id(), new AccessRequestCreate(token, "再申请"), stranger).id())
                 .isEqualTo(request.id());
@@ -157,15 +160,15 @@ class ReaderLibraryIntegrationTest {
     void hiddenPublicBookIsOnlyVisibleToManagers() {
         BookSummary book = importBook("public", owner);
         libraryService.update(book.id(),
-                new BookUpdateRequest(null, null, null, null, "HIDDEN"), admin);
+                new BookUpdateRequest(null, null, null, null, BookStatus.HIDDEN), admin);
 
         assertThatThrownBy(() -> libraryService.getBook(book.id(), stranger))
                 .isInstanceOf(NotFoundException.class);
         assertThat(libraryService.getBook(book.id(), admin).book().status())
-                .isEqualTo("HIDDEN");
+                .isEqualTo(BookStatus.HIDDEN);
         // 状态变更（恢复可见）同样需要内容管理权限，书籍所有者也无权自行放行。
         assertThatThrownBy(() -> libraryService.update(book.id(),
-                new BookUpdateRequest(null, null, null, null, "VISIBLE"), owner))
+                new BookUpdateRequest(null, null, null, null, BookStatus.VISIBLE), owner))
                 .isInstanceOf(ApiException.class)
                 .extracting(error -> ((ApiException) error).status().value())
                 .isEqualTo(403);

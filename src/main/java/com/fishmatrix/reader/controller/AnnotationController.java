@@ -2,10 +2,10 @@ package com.fishmatrix.reader.controller;
 
 import com.fishmatrix.common.auth.UserContext;
 import com.fishmatrix.reader.model.Annotation;
+import com.fishmatrix.reader.model.AnnotationList;
 import com.fishmatrix.reader.model.AnnotationRequest;
 import com.fishmatrix.reader.service.AnnotationService;
-import java.util.List;
-import java.util.Map;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,14 +27,13 @@ public class AnnotationController {
     }
 
     @GetMapping("/books/{bookId}/chapters/{chapterIndex}/annotations")
-    public Map<String, Object> annotations(
+    public AnnotationList annotations(
             @PathVariable long bookId,
             @PathVariable int chapterIndex,
             @RequestParam(defaultValue = "0") long afterId,
             @RequestParam(defaultValue = "200") int limit) {
-        List<Annotation> annotations = annotationService.listBookAnnotations(
-                bookId, chapterIndex, afterId, limit, UserContext.require());
-        return Map.of("annotations", annotations);
+        return new AnnotationList(annotationService.listBookAnnotations(
+                bookId, chapterIndex, afterId, limit, UserContext.require()));
     }
 
     @PostMapping("/books/{bookId}/chapters/{chapterIndex}/annotations")
@@ -42,7 +41,7 @@ public class AnnotationController {
     public Annotation addAnnotation(
             @PathVariable long bookId,
             @PathVariable int chapterIndex,
-            @RequestBody AnnotationRequest request) {
+            @Valid @RequestBody AnnotationRequest request) {
         return annotationService.addAnnotation(
                 bookId, chapterIndex, request, UserContext.require());
     }

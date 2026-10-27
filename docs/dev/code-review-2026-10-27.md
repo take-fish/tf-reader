@@ -512,7 +512,29 @@ return new BookPage(books, books.size(), 0, books.size());
 > （`21474836 × 100 = 2147483600`，仍在 `int` 范围内），边界是 **21474837**。
 > 已按实测值更正，结论不变。
 
+### 第二批（commit `c6ba78a`，已合入 `test`）
+
+| 项 | 状态 | 处理方式 |
+|---|---|---|
+| P1-3 权限判定两份实现 | ✅ 已修 | 抽出 `BookAccessPolicy`，`LibraryService` 与 `ShelfService` 共用 |
+| P1-1 三套异常并存 | ✅ 已修 | `IllegalArgumentException` 23 → 0，业务层只抛 `ApiException`；状态码与 error code 不变 |
+| P1-13 零业务日志 | ✅ 已修 | 导入/改书/删书/申请审批共 8 个结构化事件 |
+| P2-3 死代码 | ✅ 已修 | 删除 `Validation.requireUserId` |
+
+### 第三批（本期，已合入 `test`）
+
+| 项 | 状态 | 处理方式 |
+|---|---|---|
+| P1-2 状态与权限裸字符串 | ✅ 已修 | `BookScope` / `BookStatus` / `AccessRequestStatus` 三个枚举，`IEnum` 映射 VARCHAR，JSON 仍按名称序列化 |
+| P1-5 零参数校验 | ✅ 已修 | 引入 `spring-boot-starter-validation`，7 个请求 record 加约束注解，controller 加 `@Valid` |
+| P1-6 响应结构不统一 | ✅ 已修 | 7 处 `Map<String, Object>` 换成具名 record（`BookList` / `BookmarkList` / …），JSON 键名不变 |
+| P1-7 DTO 散落在 controller | ✅ 已修 | `ProgressResponse`、`AccessDecisionRequest` 移入 `model/` |
+| P2-12 README 配置漂移 | ✅ 已修 | 环境变量表与代码对齐 |
+| 空列表规范 | ✅ 已修 | 列表接口统一 `{资源名: []}`，新增用例锁定 |
+| 自报身份字段 | ✅ 已修 | `BookmarkRequest` / `ProgressRequest` / `AnnotationRequest` 删除 `userId`、`nickname`，身份只取鉴权上下文 |
+
 ### 后续批次
 
-P1 / P2 按「一期：框架与代码统一」推进，顺序见第 5 节。
+Phase 2：切换到 MyBatis-Plus 并删除 `repository/`、修书单 N+1、拆导入事务、
+`V3` 迁移（外键 + 乐观锁 + `user_id` 统一为 BIGINT）。
 

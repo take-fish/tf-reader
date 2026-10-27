@@ -3,6 +3,8 @@ package com.fishmatrix.reader.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fishmatrix.reader.domain.BookScope;
+import com.fishmatrix.reader.domain.BookStatus;
 import com.fishmatrix.reader.entity.ReaderBook;
 import com.fishmatrix.reader.entity.ReaderCategory;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,8 +46,8 @@ class ReaderBookMapperTest {
         book.setAuthor(author);
         book.setDescription("");
         book.setChapterCount(1);
-        book.setScope(scope);
-        book.setStatus(status);
+        book.setScope(BookScope.valueOf(scope));
+        book.setStatus(BookStatus.valueOf(status));
         book.setOwnerNickname("");
         book.setCategoryId(category);
         book.setSourceFilename("");
@@ -134,8 +136,8 @@ class ReaderBookMapperTest {
         book.setAuthor("");
         book.setDescription("");
         book.setChapterCount(0);
-        book.setScope("PUBLIC");
-        book.setStatus("VISIBLE");
+        book.setScope(BookScope.PUBLIC);
+        book.setStatus(BookStatus.VISIBLE);
         book.setOwnerNickname("");
         book.setSourceFilename("");
         book.setFileSize(0L);
