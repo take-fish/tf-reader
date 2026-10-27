@@ -1,0 +1,21 @@
+root = true
+
+# 说明：行尾由 git 统一（core.autocrlf=true → 仓库内 LF，Windows 工作区 CRLF），
+# 这里刻意不设 end_of_line，避免全仓工作区被 IDE 重写一次。
+
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+max_line_length = 120
+
+[*.{yml,yaml,json}]
+indent_size = 2
+
+[*.{xml,sql}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
