@@ -6,6 +6,8 @@ import com.fishmatrix.common.auth.CurrentUser;
 import com.fishmatrix.common.error.ApiException;
 import com.fishmatrix.common.storage.FileStorage;
 import com.fishmatrix.common.storage.StoredFile;
+import com.fishmatrix.reader.domain.BookScope;
+import com.fishmatrix.reader.domain.BookStatus;
 import com.fishmatrix.reader.error.NotFoundException;
 import com.fishmatrix.reader.model.BookDetail;
 import com.fishmatrix.reader.model.BookPage;
@@ -40,11 +42,6 @@ import org.springframework.web.multipart.MultipartFile;
 public class LibraryService {
 
     private static final Logger log = LoggerFactory.getLogger(LibraryService.class);
-
-    public static final String SCOPE_PUBLIC = "PUBLIC";
-    public static final String SCOPE_PRIVATE = "PRIVATE";
-    public static final String STATUS_VISIBLE = "VISIBLE";
-    public static final String STATUS_HIDDEN = "HIDDEN";
 
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int MAX_PAGE_SIZE = 100;
@@ -113,8 +110,8 @@ public class LibraryService {
     @Transactional
     public BookSummary importBook(String scope, String title, String author, Long categoryId,
             MultipartFile file, CurrentUser viewer) {
-        String normalizedScope = normalizeScope(scope);
-        if (SCOPE_PUBLIC.equals(normalizedScope)) {
+        BookScope normalizedScope = normalizeScope(scope);
+        if (normalizedScope.isPublic()) {
             requirePermission(viewer, "reader.public.upload");
         } else {
             requirePermission(viewer, "reader.private.manage");
@@ -140,7 +137,8 @@ public class LibraryService {
             text = Texts.decode(file.getBytes());
             try (InputStream input = file.getInputStream()) {
                 stored = storage.store(input, filename, file.getContentType(),
-                        "reader/books/" + normalizedScope.toLowerCase(Locale.ROOT), maxImportBytes);
+                        "reader/books/" + normalizedScope.name().toLowerCase(Locale.ROOT),
+                        maxImportBytes);
             }
         } catch (IOException exception) {
             throw ApiException.badRequest("文件读取失败");
@@ -221,10 +219,10 @@ public class LibraryService {
             requireCategory(request.categoryId());
             categoryId = request.categoryId();
         }
-        String status = book.status();
-        if (request.status() != null && !request.status().equalsIgnoreCase(book.status())) {
+        BookStatus status = book.status();
+        if (request.status() != null && request.status() != book.status()) {
             requirePermission(viewer, "reader.content.manage.any");
-            status = normalizeStatus(request.status());
+            status = request.status();
         }
         bookRepository.updateMetadata(
                 bookId, title, author, description, categoryId, status, Instant.now());
@@ -265,7 +263,7 @@ public class LibraryService {
 
     public BookSummary previewByShareToken(String shareToken, CurrentUser viewer) {
         BookRecord book = bookRepository.findByShareToken(shareToken)
-                .filter(record -> SCOPE_PRIVATE.equals(record.scope()))
+                .filter(record -> record.scope().isPrivate())
                 .orElseThrow(() -> new NotFoundException("分享链接无效"));
         return summary(book, viewer);
     }
@@ -322,21 +320,14 @@ public class LibraryService {
         }
     }
 
-    private static String normalizeScope(String scope) {
-        if (scope == null || scope.isBlank()) return SCOPE_PRIVATE;
-        String value = scope.strip().toUpperCase(Locale.ROOT);
-        if (!SCOPE_PUBLIC.equals(value) && !SCOPE_PRIVATE.equals(value)) {
+    /** 导入接口的 scope 是表单字段（字符串），这里解析成枚举；缺省按私有库处理。 */
+    private static BookScope normalizeScope(String scope) {
+        if (scope == null || scope.isBlank()) return BookScope.PRIVATE;
+        try {
+            return BookScope.valueOf(scope.strip().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
             throw ApiException.badRequest("书库类型不合法");
         }
-        return value;
-    }
-
-    private static String normalizeStatus(String status) {
-        String value = status.strip().toUpperCase(Locale.ROOT);
-        if (!STATUS_VISIBLE.equals(value) && !STATUS_HIDDEN.equals(value)) {
-            throw ApiException.badRequest("书籍状态不合法");
-        }
-        return value;
     }
 
     private static String stripExtension(String fileName) {

@@ -15,6 +15,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fishmatrix.reader.domain.BookScope;
+import com.fishmatrix.reader.domain.BookStatus;
 import com.fishmatrix.reader.error.NotFoundException;
 import com.fishmatrix.reader.model.BookDetail;
 import com.fishmatrix.reader.model.BookPage;
@@ -55,8 +57,8 @@ class BookControllerTest {
     }
 
     private static BookSummary summary(long id, String title) {
-        return new BookSummary(id, title, "作者", "描述", 3, "PUBLIC", null, "", null, null,
-                "VISIBLE", false, false, false,
+        return new BookSummary(id, title, "作者", "描述", 3, BookScope.PUBLIC, null, "", null, null,
+                BookStatus.VISIBLE, false, false, false,
                 Instant.parse("2026-10-18T09:00:00Z"), Instant.parse("2026-10-18T09:00:00Z"));
     }
 
@@ -69,7 +71,20 @@ class BookControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.books[0].title").value("演示书"))
                 .andExpect(jsonPath("$.books[0].chapterCount").value(3))
+                // 枚举按名称序列化：改造前后 JSON 必须完全一致
+                .andExpect(jsonPath("$.books[0].scope").value("PUBLIC"))
+                .andExpect(jsonPath("$.books[0].status").value("VISIBLE"))
                 .andExpect(jsonPath("$.total").value(1));
+    }
+
+    @Test
+    void myBooksUsesTypedEnvelopeAndNeverReturnsNull() throws Exception {
+        when(libraryService.listMine(any())).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/reader/books/mine"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.books").isArray())
+                .andExpect(jsonPath("$.books").isEmpty());
     }
 
     @Test

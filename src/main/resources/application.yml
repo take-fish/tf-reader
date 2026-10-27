@@ -32,7 +32,9 @@ spring:
     password: ${MYSQL_APP_PASSWORD:}
   data:
     redis:
-      host: ${REDIS_HOST:10.28.13.214}
+      # 与数据源同样的原则：默认指向本机，漏配就快速失败，而不是静默连到共享 Redis。
+      # 目前阅读服务尚未使用 Redis，保留依赖是为了将来多实例部署时的共享状态。
+      host: ${REDIS_HOST:127.0.0.1}
       port: ${REDIS_PORT:6379}
       database: ${REDIS_DATABASE:0}
   sql:

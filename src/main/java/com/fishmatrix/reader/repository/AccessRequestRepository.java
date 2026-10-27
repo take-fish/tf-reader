@@ -1,5 +1,6 @@
 package com.fishmatrix.reader.repository;
 
+import com.fishmatrix.reader.domain.AccessRequestStatus;
 import com.fishmatrix.reader.model.AccessRequestView;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -46,13 +47,13 @@ public class AccessRequestRepository {
                 + " ORDER BY r.updated_at DESC, r.id DESC", this::map, requesterId);
     }
 
-    public List<AccessRequestView> findByOwner(long ownerId, String status) {
-        if (status == null || status.isBlank()) {
+    public List<AccessRequestView> findByOwner(long ownerId, AccessRequestStatus status) {
+        if (status == null) {
             return jdbc.query(SELECT + " WHERE r.owner_id = ?"
                     + " ORDER BY r.updated_at DESC, r.id DESC", this::map, ownerId);
         }
         return jdbc.query(SELECT + " WHERE r.owner_id = ? AND r.status = ?"
-                + " ORDER BY r.updated_at DESC, r.id DESC", this::map, ownerId, status);
+                + " ORDER BY r.updated_at DESC, r.id DESC", this::map, ownerId, status.getValue());
     }
 
     /** 申请复用同一 (book, requester) 记录；并发下由唯一键兜底。 */
@@ -72,17 +73,17 @@ public class AccessRequestRepository {
                 "owner_id", ownerId,
                 "requester_id", requesterId,
                 "requester_nickname", requesterNickname,
-                "status", "PENDING",
+                "status", AccessRequestStatus.PENDING.getValue(),
                 "message", message,
                 "decision_message", "",
                 "created_at", Timestamp.from(now),
                 "updated_at", Timestamp.from(now))).longValue();
     }
 
-    public void decide(long id, String status, String decisionMessage, Instant now) {
+    public void decide(long id, AccessRequestStatus status, String decisionMessage, Instant now) {
         jdbc.update("UPDATE reader_access_request SET status = ?, decision_message = ?,"
                         + " decided_at = ?, updated_at = ? WHERE id = ?",
-                status, decisionMessage, Timestamp.from(now), Timestamp.from(now), id);
+                status.getValue(), decisionMessage, Timestamp.from(now), Timestamp.from(now), id);
     }
 
     private AccessRequestView map(ResultSet rs, int rowNum) throws SQLException {
@@ -95,7 +96,7 @@ public class AccessRequestRepository {
                 rs.getString("owner_nickname"),
                 rs.getLong("requester_id"),
                 rs.getString("requester_nickname"),
-                rs.getString("status"),
+                AccessRequestStatus.valueOf(rs.getString("status")),
                 rs.getString("message"),
                 rs.getString("decision_message"),
                 rs.getTimestamp("created_at").toInstant(),

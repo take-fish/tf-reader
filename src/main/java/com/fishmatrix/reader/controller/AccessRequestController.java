@@ -1,11 +1,13 @@
 package com.fishmatrix.reader.controller;
 
 import com.fishmatrix.common.auth.UserContext;
+import com.fishmatrix.reader.domain.AccessRequestStatus;
+import com.fishmatrix.reader.model.AccessDecisionRequest;
 import com.fishmatrix.reader.model.AccessRequestCreate;
+import com.fishmatrix.reader.model.AccessRequestList;
 import com.fishmatrix.reader.model.AccessRequestView;
 import com.fishmatrix.reader.service.AccessRequestService;
-import java.util.List;
-import java.util.Map;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,21 +31,19 @@ public class AccessRequestController {
     @PostMapping("/books/{bookId}/access-requests")
     @ResponseStatus(HttpStatus.CREATED)
     public AccessRequestView request(@PathVariable long bookId,
-            @RequestBody AccessRequestCreate create) {
+            @Valid @RequestBody AccessRequestCreate create) {
         return service.request(bookId, create, UserContext.require());
     }
 
     @GetMapping("/access-requests/mine")
-    public Map<String, Object> mine() {
-        List<AccessRequestView> requests = service.mine(UserContext.require());
-        return Map.of("requests", requests);
+    public AccessRequestList mine() {
+        return new AccessRequestList(service.mine(UserContext.require()));
     }
 
     @GetMapping("/access-requests/received")
-    public Map<String, Object> received(
-            @RequestParam(required = false) String status) {
-        List<AccessRequestView> requests = service.received(UserContext.require(), status);
-        return Map.of("requests", requests);
+    public AccessRequestList received(
+            @RequestParam(required = false) AccessRequestStatus status) {
+        return new AccessRequestList(service.received(UserContext.require(), status));
     }
 
     @PostMapping("/access-requests/{requestId}/approve")
@@ -53,7 +53,7 @@ public class AccessRequestController {
 
     @PostMapping("/access-requests/{requestId}/reject")
     public AccessRequestView reject(@PathVariable long requestId,
-            @RequestBody(required = false) AccessDecision decision) {
+            @RequestBody(required = false) AccessDecisionRequest decision) {
         return service.reject(requestId, decision == null ? null : decision.message(),
                 UserContext.require());
     }
@@ -66,8 +66,5 @@ public class AccessRequestController {
     @PostMapping("/access-requests/{requestId}/cancel")
     public AccessRequestView cancel(@PathVariable long requestId) {
         return service.cancel(requestId, UserContext.require());
-    }
-
-    public record AccessDecision(String message) {
     }
 }

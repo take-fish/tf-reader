@@ -4,6 +4,7 @@ import static net.logstash.logback.argument.StructuredArguments.kv;
 
 import com.fishmatrix.common.auth.CurrentUser;
 import com.fishmatrix.common.error.ApiException;
+import com.fishmatrix.reader.domain.AccessRequestStatus;
 import com.fishmatrix.reader.error.NotFoundException;
 import com.fishmatrix.reader.error.ReaderErrorCodes;
 import com.fishmatrix.reader.model.AccessRequestCreate;
@@ -58,10 +59,10 @@ public class AccessRequestService {
         if (existing.isPresent()) {
             AccessRequestView current = existing.get();
             switch (current.status()) {
-                case "APPROVED", "PENDING" -> {
+                case APPROVED, PENDING -> {
                     return current;
                 }
-                case "REJECTED" -> {
+                case REJECTED -> {
                     if (current.decidedAt() != null
                             && current.decidedAt().plus(REJECT_COOLDOWN).isAfter(now)) {
                         throw ApiException.tooManyRequests(
@@ -90,14 +91,14 @@ public class AccessRequestService {
         return repository.findByRequester(viewer.id());
     }
 
-    public List<AccessRequestView> received(CurrentUser viewer, String status) {
+    public List<AccessRequestView> received(CurrentUser viewer, AccessRequestStatus status) {
         return repository.findByOwner(viewer.id(), status);
     }
 
     @Transactional
     public AccessRequestView approve(long id, CurrentUser viewer) {
         AccessRequestView request = requireOwnerPending(id, viewer);
-        repository.decide(request.id(), "APPROVED", "", Instant.now());
+        repository.decide(request.id(), AccessRequestStatus.APPROVED, "", Instant.now());
         log.info("通过访问申请",
                 kv("event", "access.approved"),
                 kv("request_id", id),
@@ -111,7 +112,7 @@ public class AccessRequestService {
     @Transactional
     public AccessRequestView reject(long id, String reason, CurrentUser viewer) {
         AccessRequestView request = requireOwnerPending(id, viewer);
-        repository.decide(request.id(), "REJECTED",
+        repository.decide(request.id(), AccessRequestStatus.REJECTED,
                 Validation.text(reason, 255, "拒绝理由", false), Instant.now());
         log.info("拒绝访问申请",
                 kv("event", "access.rejected"),
@@ -130,11 +131,11 @@ public class AccessRequestService {
         if (request.ownerId() != viewer.id()) {
             throw ApiException.notFound("申请不存在");
         }
-        if (!"APPROVED".equals(request.status())) {
+        if (!request.status().isApproved()) {
             throw ApiException.conflict(ReaderErrorCodes.ACCESS_INVALID_STATE,
                     "只有已通过的申请才能撤销");
         }
-        repository.decide(id, "REVOKED", "", Instant.now());
+        repository.decide(id, AccessRequestStatus.REVOKED, "", Instant.now());
         log.info("收回访问授权",
                 kv("event", "access.revoked"),
                 kv("request_id", id),
@@ -152,11 +153,11 @@ public class AccessRequestService {
         if (request.requesterId() != viewer.id()) {
             throw ApiException.notFound("申请不存在");
         }
-        if (!"PENDING".equals(request.status())) {
+        if (!request.status().isPending()) {
             throw ApiException.conflict(ReaderErrorCodes.ACCESS_INVALID_STATE,
                     "只有待审批的申请才能取消");
         }
-        repository.decide(id, "CANCELLED", "", Instant.now());
+        repository.decide(id, AccessRequestStatus.CANCELLED, "", Instant.now());
         log.info("取消访问申请",
                 kv("event", "access.cancelled"),
                 kv("request_id", id),
@@ -172,7 +173,7 @@ public class AccessRequestService {
         if (request.ownerId() != viewer.id()) {
             throw ApiException.notFound("申请不存在");
         }
-        if (!"PENDING".equals(request.status())) {
+        if (!request.status().isPending()) {
             throw ApiException.conflict("INVALID_STATE", "申请已处理");
         }
         return request;

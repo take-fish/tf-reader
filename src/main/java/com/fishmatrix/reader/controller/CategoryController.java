@@ -2,10 +2,10 @@ package com.fishmatrix.reader.controller;
 
 import com.fishmatrix.common.auth.RequirePermission;
 import com.fishmatrix.reader.model.Category;
+import com.fishmatrix.reader.model.CategoryList;
 import com.fishmatrix.reader.model.CategoryRequest;
 import com.fishmatrix.reader.service.CategoryService;
-import java.util.List;
-import java.util.Map;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,22 +28,21 @@ public class CategoryController {
     }
 
     @GetMapping("/categories")
-    public Map<String, Object> list() {
-        List<Category> categories = categoryService.list();
-        return Map.of("categories", categories);
+    public CategoryList list() {
+        return new CategoryList(categoryService.list());
     }
 
     @PostMapping("/categories")
     @ResponseStatus(HttpStatus.CREATED)
     @RequirePermission("reader.category.manage")
-    public Category create(@RequestBody CategoryRequest request) {
+    public Category create(@Valid @RequestBody CategoryRequest request) {
         return categoryService.create(request);
     }
 
     @PutMapping("/categories/{categoryId}")
     @RequirePermission("reader.category.manage")
     public Category update(@PathVariable long categoryId,
-            @RequestBody CategoryRequest request) {
+            @Valid @RequestBody CategoryRequest request) {
         return categoryService.update(categoryId, request);
     }
 

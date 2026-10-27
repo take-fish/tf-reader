@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fishmatrix.reader.domain.AccessRequestStatus;
 import java.time.Instant;
 import lombok.Data;
 
@@ -19,7 +20,7 @@ public class ReaderAccessRequest {
     private Long ownerId;
     private Long requesterId;
     private String requesterNickname;
-    private String status;
+    private AccessRequestStatus status;
     private String message;
     private String decisionMessage;
     private Instant decidedAt;

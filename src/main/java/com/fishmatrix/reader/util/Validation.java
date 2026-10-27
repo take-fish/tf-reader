@@ -1,19 +1,10 @@
 package com.fishmatrix.reader.util;
 
 import com.fishmatrix.common.error.ApiException;
-import java.util.regex.Pattern;
 
 public final class Validation {
 
-    private static final Pattern USER_ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
-
     private Validation() {
-    }
-
-    public static void requireUserId(String userId) {
-        if (userId == null || !USER_ID.matcher(userId).matches()) {
-            throw ApiException.badRequest("userId 格式不合法");
-        }
     }
 
     public static void requireChapterIndex(int chapterIndex, int chapterCount) {
