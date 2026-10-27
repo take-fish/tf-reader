@@ -102,12 +102,12 @@ fm:
 
 | 变量 | 默认 | 说明 |
 |---|---|---|
-| `MYSQL_HOST` / `MYSQL_PORT` | `10.28.25.234` / `3306` | MySQL |
+| `MYSQL_HOST` / `MYSQL_PORT` | `127.0.0.1` / `3306` | MySQL。**默认值只服务本地开发**；生产/测试由 `reader配置/*/.env` 注入，compose 里是必填项，未注入直接启动失败 |
 | `MYSQL_APP_USER` / `MYSQL_APP_PASSWORD` | `fm_reader_app` / 空 | 运行时账号（仅 DML） |
 | `NACOS_ADDR` / `NACOS_USERNAME` / `NACOS_PASSWORD` | — | 服务注册 |
 | `FM_IDENTITY_SECRET` | 空 | 网关身份签名密钥，须与网关一致 |
 | `TF_USER_URL` | `http://127.0.0.1:8101` | 用户中台内网地址（Bearer 回退 introspection） |
-| `FM_STORAGE_ENABLED` / `FM_STORAGE_BASE_DIR` | `true` / `/app/data/files` | 文件存储与命名卷挂载点 |
+| `FM_STORAGE_ENABLED` / `FM_STORAGE_BASE_DIR` | `true` / `./data/files` | 文件存储与命名卷挂载点（容器内由 compose 覆盖为 `/app/data/files`） |
 | `SQL_INIT_MODE` | `never` | 业务容器不执行 SQL 初始化 |
 | `SPRING_FLYWAY_ENABLED` | `false` | 业务容器不执行迁移，由 `db-migrate-reader` 负责 |
 | `READER_MAX_IMPORT_BYTES` | `8388608` | 导入文件上限 |

@@ -50,7 +50,8 @@ public class ShelfService {
         String name = Validation.text(request.name(), 64, "书单名称", true);
         String description = Validation.truncate(request.description(), 255);
         long id = shelfRepository.insert(viewer.id(), name, description, Instant.now());
-        return shelfRepository.findById(id).orElseThrow();
+        return shelfRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("书单不存在"));
     }
 
     @Transactional
@@ -62,7 +63,8 @@ public class ShelfService {
         String description = request.description() == null
                 ? shelf.description() : Validation.truncate(request.description(), 255);
         shelfRepository.update(shelfId, name, description, Instant.now());
-        return shelfRepository.findById(shelfId).orElseThrow();
+        return shelfRepository.findById(shelfId)
+                .orElseThrow(() -> new NotFoundException("书单不存在"));
     }
 
     @Transactional

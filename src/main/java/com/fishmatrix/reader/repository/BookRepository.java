@@ -41,7 +41,7 @@ public class BookRepository {
                 .usingGeneratedKeyColumns("id");
     }
 
-    public List<BookRecord> findPublic(Long categoryId, String keyword, int offset, int limit) {
+    public List<BookRecord> findPublic(Long categoryId, String keyword, long offset, int limit) {
         StringBuilder sql = new StringBuilder(SELECT_BOOK)
                 .append(" WHERE b.scope = 'PUBLIC' AND b.status = 'VISIBLE'");
         List<Object> args = new java.util.ArrayList<>();

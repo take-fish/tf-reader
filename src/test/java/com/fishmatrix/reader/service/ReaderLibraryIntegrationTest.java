@@ -7,6 +7,7 @@ import com.fishmatrix.common.auth.CurrentUser;
 import com.fishmatrix.common.error.ApiException;
 import com.fishmatrix.reader.model.AccessRequestCreate;
 import com.fishmatrix.reader.model.AccessRequestView;
+import com.fishmatrix.reader.model.BookPage;
 import com.fishmatrix.reader.model.BookSummary;
 import com.fishmatrix.reader.model.BookUpdateRequest;
 import com.fishmatrix.reader.model.Category;
@@ -18,6 +19,7 @@ import com.fishmatrix.reader.model.ShelfRequest;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -208,6 +210,34 @@ class ReaderLibraryIntegrationTest {
 
         shelfService.removeBook(shelf.id(), mine.id(), owner);
         assertThat(shelfService.get(shelf.id(), owner).books()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("页码与页大小都被钳制：超大 page 不会让 (page * size) 溢出成负 offset")
+    void oversizedPagingIsClamped() {
+        importBook("public", owner);
+
+        BookPage normal = libraryService.listPublic(null, null, 0, 20, owner);
+        assertThat(normal.page()).isZero();
+        assertThat(normal.size()).isEqualTo(20);
+        assertThat(normal.total()).isGreaterThanOrEqualTo(1);
+
+        BookPage overflow = libraryService.listPublic(null, null, Integer.MAX_VALUE, 1_000, owner);
+        assertThat(overflow.page()).isEqualTo(10_000);
+        assertThat(overflow.size()).isEqualTo(100);
+        assertThat(overflow.books()).isEmpty();
+
+        assertThat(libraryService.listPublic(null, null, -5, -1, owner).page()).isZero();
+        assertThat(libraryService.listPublic(null, null, -5, -1, owner).size()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("更新不存在的分类返回 404，而不是 400")
+    void updatingMissingCategoryIsNotFound() {
+        assertThatThrownBy(() -> categoryService.update(999_999L, new CategoryRequest("不存在", 0)))
+                .isInstanceOf(NotFoundException.class)
+                .extracting(error -> ((NotFoundException) error).status().value())
+                .isEqualTo(404);
     }
 
     private BookSummary importBook(String scope, CurrentUser who) {

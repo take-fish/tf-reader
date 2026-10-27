@@ -41,6 +41,8 @@ public class LibraryService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int MAX_PAGE_SIZE = 100;
+    /** 页码上限：防止 (page * size) 溢出 int，也防止有人从第 200 万页开始扫库。 */
+    private static final int MAX_PAGE = 10_000;
 
     private final BookRepository bookRepository;
     private final CategoryRepository categoryRepository;
@@ -63,10 +65,11 @@ public class LibraryService {
 
     public BookPage listPublic(Long categoryId, String keyword, int page, int size,
             CurrentUser viewer) {
-        int safePage = Math.max(0, page);
+        int safePage = Math.min(MAX_PAGE, Math.max(0, page));
         int safeSize = Math.min(MAX_PAGE_SIZE, Math.max(1, size));
+        long offset = (long) safePage * safeSize;
         List<BookSummary> books = bookRepository
-                .findPublic(categoryId, keyword, safePage * safeSize, safeSize)
+                .findPublic(categoryId, keyword, offset, safeSize)
                 .stream().map(record -> summary(record, viewer)).toList();
         return new BookPage(books,
                 bookRepository.countPublic(categoryId, keyword), safePage, safeSize);
