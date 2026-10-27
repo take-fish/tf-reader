@@ -216,6 +216,25 @@ class ReaderLibraryIntegrationTest {
     }
 
     @Test
+    @DisplayName("书单一屏返回多本书：不重、不漏，且不再逐本查询")
+    void shelfReturnsAllBooksInOneShot() {
+        BookSummary first = importBook("private", owner);
+        BookSummary second = importBook("private", owner);
+        BookSummary third = importBook("private", owner);
+
+        Shelf shelf = shelfService.create(new ShelfRequest("多本书单", ""), owner);
+        shelfService.addBook(shelf.id(), first.id(), owner);
+        shelfService.addBook(shelf.id(), second.id(), owner);
+        shelfService.addBook(shelf.id(), third.id(), owner);
+
+        ShelfDetail detail = shelfService.get(shelf.id(), owner);
+
+        assertThat(detail.books()).extracting(BookSummary::id)
+                .containsExactlyInAnyOrder(first.id(), second.id(), third.id());
+        assertThat(detail.shelf().bookCount()).isEqualTo(3);
+    }
+
+    @Test
     @DisplayName("页码与页大小都被钳制：超大 page 不会让 (page * size) 溢出成负 offset")
     void oversizedPagingIsClamped() {
         importBook("public", owner);

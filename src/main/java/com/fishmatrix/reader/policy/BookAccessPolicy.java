@@ -5,6 +5,7 @@ import com.fishmatrix.common.error.ApiException;
 import com.fishmatrix.reader.error.NotFoundException;
 import com.fishmatrix.reader.repository.BookRepository;
 import com.fishmatrix.reader.repository.BookRepository.BookRecord;
+import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
@@ -29,6 +30,17 @@ public class BookAccessPolicy {
         if (book.isPrivate()) {
             return isOwner(book, viewer)
                     || bookRepository.hasApprovedAccess(book.id(), viewer.id());
+        }
+        return book.isVisible() || canManageAny(viewer);
+    }
+
+    /**
+     * 批量判定用的重载：{@code approvedBookIds} 由调用方一次性查好，
+     * 避免"书单里每本私有书查一次审批记录"造成的 N+1。
+     */
+    public boolean canRead(BookRecord book, CurrentUser viewer, Set<Long> approvedBookIds) {
+        if (book.isPrivate()) {
+            return isOwner(book, viewer) || approvedBookIds.contains(book.id());
         }
         return book.isVisible() || canManageAny(viewer);
     }
