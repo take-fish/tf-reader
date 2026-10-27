@@ -262,6 +262,24 @@ class ReaderLibraryIntegrationTest {
                 .isEqualTo(404);
     }
 
+    @Test
+    @DisplayName("批量写章节：50 章的书一次导入，序号与内容都对得上")
+    void importsManyChaptersInOneBatch() {
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < 50; i++) {
+            text.append("第").append(i + 1).append("章 标题").append(i + 1)
+                    .append("\n\n正文").append(i).append("\n\n");
+        }
+        MockMultipartFile file = new MockMultipartFile("file", "many.txt", "text/plain",
+                text.toString().getBytes(StandardCharsets.UTF_8));
+
+        BookSummary book = libraryService.importBook("public", "多章节", "作者", null, file, owner);
+
+        assertThat(book.chapterCount()).isEqualTo(50);
+        assertThat(libraryService.getChapter(book.id(), 0, owner).content()).contains("正文0");
+        assertThat(libraryService.getChapter(book.id(), 49, owner).content()).contains("正文49");
+    }
+
     private BookSummary importBook(String scope, CurrentUser who) {
         return libraryService.importBook(scope, "测试书", "作者", null, sampleFile(), who);
     }
