@@ -3,14 +3,15 @@ package com.fishmatrix.reader.controller;
 import com.fishmatrix.common.auth.CurrentUser;
 import com.fishmatrix.common.auth.UserContext;
 import com.fishmatrix.reader.model.BookDetail;
+import com.fishmatrix.reader.model.BookList;
 import com.fishmatrix.reader.model.BookPage;
 import com.fishmatrix.reader.model.BookSummary;
 import com.fishmatrix.reader.model.BookUpdateRequest;
 import com.fishmatrix.reader.model.ChapterContent;
 import com.fishmatrix.reader.model.ShareLink;
 import com.fishmatrix.reader.service.LibraryService;
+import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -51,15 +52,13 @@ public class BookController {
     }
 
     @GetMapping("/books/mine")
-    public Map<String, Object> myBooks() {
-        List<BookSummary> books = libraryService.listMine(UserContext.require());
-        return Map.of("books", books);
+    public BookList myBooks() {
+        return new BookList(libraryService.listMine(UserContext.require()));
     }
 
     @GetMapping("/books/shared")
-    public Map<String, Object> sharedBooks() {
-        List<BookSummary> books = libraryService.listShared(UserContext.require());
-        return Map.of("books", books);
+    public BookList sharedBooks() {
+        return new BookList(libraryService.listShared(UserContext.require()));
     }
 
     @GetMapping("/books/shared/{shareToken}")
@@ -91,7 +90,7 @@ public class BookController {
 
     @PatchMapping("/books/{bookId}")
     public BookSummary updateBook(@PathVariable long bookId,
-            @RequestBody BookUpdateRequest request) {
+            @Valid @RequestBody BookUpdateRequest request) {
         return libraryService.update(bookId, request, UserContext.require());
     }
 

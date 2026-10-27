@@ -1,5 +1,6 @@
 package com.fishmatrix.reader.model;
 
+import com.fishmatrix.reader.domain.AccessRequestStatus;
 import java.time.Instant;
 
 public record AccessRequestView(
@@ -10,7 +11,7 @@ public record AccessRequestView(
         String ownerNickname,
         long requesterId,
         String requesterNickname,
-        String status,
+        AccessRequestStatus status,
         String message,
         String decisionMessage,
         Instant createdAt,

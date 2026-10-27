@@ -1,19 +1,24 @@
 package com.fishmatrix.reader.service;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
+
 import com.fishmatrix.common.auth.CurrentUser;
 import com.fishmatrix.common.error.ApiException;
 import com.fishmatrix.common.storage.FileStorage;
 import com.fishmatrix.common.storage.StoredFile;
+import com.fishmatrix.reader.domain.BookScope;
+import com.fishmatrix.reader.domain.BookStatus;
+import com.fishmatrix.reader.error.NotFoundException;
 import com.fishmatrix.reader.model.BookDetail;
 import com.fishmatrix.reader.model.BookPage;
 import com.fishmatrix.reader.model.BookSummary;
 import com.fishmatrix.reader.model.BookUpdateRequest;
 import com.fishmatrix.reader.model.ChapterContent;
 import com.fishmatrix.reader.model.ChapterSummary;
-import com.fishmatrix.reader.model.NotFoundException;
 import com.fishmatrix.reader.model.ShareLink;
 import com.fishmatrix.reader.parser.ChapterParser;
 import com.fishmatrix.reader.parser.ChapterParser.ParsedChapter;
+import com.fishmatrix.reader.policy.BookAccessPolicy;
 import com.fishmatrix.reader.repository.BookRepository;
 import com.fishmatrix.reader.repository.BookRepository.BookRecord;
 import com.fishmatrix.reader.repository.CategoryRepository;
@@ -26,6 +31,8 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,18 +41,18 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class LibraryService {
 
-    public static final String SCOPE_PUBLIC = "PUBLIC";
-    public static final String SCOPE_PRIVATE = "PRIVATE";
-    public static final String STATUS_VISIBLE = "VISIBLE";
-    public static final String STATUS_HIDDEN = "HIDDEN";
+    private static final Logger log = LoggerFactory.getLogger(LibraryService.class);
 
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int MAX_PAGE_SIZE = 100;
+    /** 页码上限：防止 (page * size) 溢出 int，也防止有人从第 200 万页开始扫库。 */
+    private static final int MAX_PAGE = 10_000;
 
     private final BookRepository bookRepository;
     private final CategoryRepository categoryRepository;
     private final ChapterParser chapterParser;
     private final FileStorage storage;
+    private final BookAccessPolicy accessPolicy;
     private final long maxImportBytes;
 
     public LibraryService(
@@ -53,20 +60,23 @@ public class LibraryService {
             CategoryRepository categoryRepository,
             ChapterParser chapterParser,
             FileStorage storage,
+            BookAccessPolicy accessPolicy,
             @Value("${app.reader.max-import-bytes:8388608}") long maxImportBytes) {
         this.bookRepository = bookRepository;
         this.categoryRepository = categoryRepository;
         this.chapterParser = chapterParser;
         this.storage = storage;
+        this.accessPolicy = accessPolicy;
         this.maxImportBytes = maxImportBytes;
     }
 
     public BookPage listPublic(Long categoryId, String keyword, int page, int size,
             CurrentUser viewer) {
-        int safePage = Math.max(0, page);
+        int safePage = Math.min(MAX_PAGE, Math.max(0, page));
         int safeSize = Math.min(MAX_PAGE_SIZE, Math.max(1, size));
+        long offset = (long) safePage * safeSize;
         List<BookSummary> books = bookRepository
-                .findPublic(categoryId, keyword, safePage * safeSize, safeSize)
+                .findPublic(categoryId, keyword, offset, safeSize)
                 .stream().map(record -> summary(record, viewer)).toList();
         return new BookPage(books,
                 bookRepository.countPublic(categoryId, keyword), safePage, safeSize);
@@ -100,8 +110,8 @@ public class LibraryService {
     @Transactional
     public BookSummary importBook(String scope, String title, String author, Long categoryId,
             MultipartFile file, CurrentUser viewer) {
-        String normalizedScope = normalizeScope(scope);
-        if (SCOPE_PUBLIC.equals(normalizedScope)) {
+        BookScope normalizedScope = normalizeScope(scope);
+        if (normalizedScope.isPublic()) {
             requirePermission(viewer, "reader.public.upload");
         } else {
             requirePermission(viewer, "reader.private.manage");
@@ -111,14 +121,14 @@ public class LibraryService {
             requireCategory(categoryId);
         }
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("请选择要导入的 txt 文件");
+            throw ApiException.badRequest("请选择要导入的 txt 文件");
         }
         if (file.getSize() > maxImportBytes) {
-            throw new IllegalArgumentException("文件大小超过限制");
+            throw ApiException.badRequest("文件大小超过限制");
         }
         String filename = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
         if (!filename.toLowerCase(Locale.ROOT).endsWith(".txt")) {
-            throw new IllegalArgumentException("仅支持导入 txt 文件");
+            throw ApiException.badRequest("仅支持导入 txt 文件");
         }
 
         String text;
@@ -127,15 +137,16 @@ public class LibraryService {
             text = Texts.decode(file.getBytes());
             try (InputStream input = file.getInputStream()) {
                 stored = storage.store(input, filename, file.getContentType(),
-                        "reader/books/" + normalizedScope.toLowerCase(Locale.ROOT), maxImportBytes);
+                        "reader/books/" + normalizedScope.name().toLowerCase(Locale.ROOT),
+                        maxImportBytes);
             }
         } catch (IOException exception) {
-            throw new IllegalArgumentException("文件读取失败");
+            throw ApiException.badRequest("文件读取失败");
         }
         List<ParsedChapter> chapters = chapterParser.parse(text);
         if (chapters.isEmpty()) {
             storage.delete(stored.storageKey());
-            throw new IllegalArgumentException("未解析到有效章节");
+            throw ApiException.badRequest("未解析到有效章节");
         }
 
         String fallbackTitle = stripExtension(filename);
@@ -176,22 +187,22 @@ public class LibraryService {
             storage.delete(stored.storageKey());
             throw exception;
         }
+        log.info("导入书籍完成",
+                kv("event", "book.imported"),
+                kv("book_id", bookId),
+                kv("scope", normalizedScope),
+                kv("chapters", chapters.size()),
+                kv("bytes", stored.size()),
+                kv("owner_id", viewer.id()));
         return summary(requireRecord(bookId), viewer);
     }
 
     @Transactional
     public BookSummary update(long bookId, BookUpdateRequest request, CurrentUser viewer) {
         BookRecord book = requireRecord(bookId);
-        boolean manager = viewer.hasPermission("reader.content.manage.any");
-        boolean owner = book.isOwnedBy(viewer.id());
-        if (book.isPublic() && !owner && !manager) {
-            throw ApiException.forbidden("没有管理这本书的权限");
-        }
-        if (!book.isPublic() && !owner) {
-            throw new NotFoundException("书籍不存在");
-        }
+        accessPolicy.requireEditable(book, viewer);
         if (request == null) {
-            throw new IllegalArgumentException("请求体不能为空");
+            throw ApiException.badRequest("请求体不能为空");
         }
 
         String title = request.title() == null
@@ -208,32 +219,34 @@ public class LibraryService {
             requireCategory(request.categoryId());
             categoryId = request.categoryId();
         }
-        String status = book.status();
-        if (request.status() != null && !request.status().equalsIgnoreCase(book.status())) {
+        BookStatus status = book.status();
+        if (request.status() != null && request.status() != book.status()) {
             requirePermission(viewer, "reader.content.manage.any");
-            status = normalizeStatus(request.status());
+            status = request.status();
         }
         bookRepository.updateMetadata(
                 bookId, title, author, description, categoryId, status, Instant.now());
+        log.info("更新书籍元信息",
+                kv("event", "book.updated"),
+                kv("book_id", bookId),
+                kv("status", status),
+                kv("actor_id", viewer.id()));
         return summary(requireRecord(bookId), viewer);
     }
 
     @Transactional
     public void delete(long bookId, CurrentUser viewer) {
         BookRecord book = requireRecord(bookId);
-        boolean manager = viewer.hasPermission("reader.content.manage.any");
-        boolean owner = book.isOwnedBy(viewer.id());
-        if (!book.isPublic() && !owner) {
-            // 私有内容对无权用户统一表现为不存在，避免泄露书名等元信息。
-            throw new NotFoundException("书籍不存在");
-        }
-        if (book.isPublic() && !owner && !manager) {
-            throw ApiException.forbidden("没有删除这本书的权限");
-        }
+        accessPolicy.requireDeletable(book, viewer);
         bookRepository.deleteBook(bookId);
         if (book.storageKey() != null) {
             storage.delete(book.storageKey());
         }
+        log.info("删除书籍",
+                kv("event", "book.deleted"),
+                kv("book_id", bookId),
+                kv("scope", book.scope()),
+                kv("actor_id", viewer.id()));
     }
 
     public ShareLink share(long bookId, CurrentUser viewer) {
@@ -250,29 +263,20 @@ public class LibraryService {
 
     public BookSummary previewByShareToken(String shareToken, CurrentUser viewer) {
         BookRecord book = bookRepository.findByShareToken(shareToken)
-                .filter(record -> SCOPE_PRIVATE.equals(record.scope()))
+                .filter(record -> record.scope().isPrivate())
                 .orElseThrow(() -> new NotFoundException("分享链接无效"));
         return summary(book, viewer);
     }
 
     public BookRecord requireReadable(long bookId, CurrentUser viewer) {
         BookRecord book = requireRecord(bookId);
-        if (book.isPrivate()) {
-            if (book.isOwnedBy(viewer.id())
-                    || bookRepository.hasApprovedAccess(bookId, viewer.id())) {
-                return book;
-            }
-            throw new NotFoundException("书籍不存在");
-        }
-        if (book.isVisible() || viewer.hasPermission("reader.content.manage.any")) {
-            return book;
-        }
-        throw new NotFoundException("书籍不存在");
+        accessPolicy.requireReadable(book, viewer);
+        return book;
     }
 
     public BookRecord requirePrivateOwner(long bookId, CurrentUser viewer) {
         BookRecord book = requireRecord(bookId);
-        if (!book.isPrivate() || !book.isOwnedBy(viewer.id())) {
+        if (!book.isPrivate() || !accessPolicy.isOwner(book, viewer)) {
             throw new NotFoundException("书籍不存在");
         }
         return book;
@@ -284,10 +288,8 @@ public class LibraryService {
     }
 
     public BookSummary summary(BookRecord book, CurrentUser viewer) {
-        boolean owner = book.isOwnedBy(viewer.id());
-        boolean manager = book.isPublic()
-                && viewer.hasPermission("reader.content.manage.any");
-        boolean editable = owner || manager;
+        boolean owner = accessPolicy.isOwner(book, viewer);
+        boolean editable = accessPolicy.canModify(book, viewer);
         return new BookSummary(
                 book.id(),
                 book.title(),
@@ -309,7 +311,7 @@ public class LibraryService {
 
     private void requireCategory(long categoryId) {
         categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("分类不存在"));
+                .orElseThrow(() -> ApiException.badRequest("分类不存在"));
     }
 
     private static void requirePermission(CurrentUser viewer, String permission) {
@@ -318,21 +320,14 @@ public class LibraryService {
         }
     }
 
-    private static String normalizeScope(String scope) {
-        if (scope == null || scope.isBlank()) return SCOPE_PRIVATE;
-        String value = scope.strip().toUpperCase(Locale.ROOT);
-        if (!SCOPE_PUBLIC.equals(value) && !SCOPE_PRIVATE.equals(value)) {
-            throw new IllegalArgumentException("书库类型不合法");
+    /** 导入接口的 scope 是表单字段（字符串），这里解析成枚举；缺省按私有库处理。 */
+    private static BookScope normalizeScope(String scope) {
+        if (scope == null || scope.isBlank()) return BookScope.PRIVATE;
+        try {
+            return BookScope.valueOf(scope.strip().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw ApiException.badRequest("书库类型不合法");
         }
-        return value;
-    }
-
-    private static String normalizeStatus(String status) {
-        String value = status.strip().toUpperCase(Locale.ROOT);
-        if (!STATUS_VISIBLE.equals(value) && !STATUS_HIDDEN.equals(value)) {
-            throw new IllegalArgumentException("书籍状态不合法");
-        }
-        return value;
     }
 
     private static String stripExtension(String fileName) {

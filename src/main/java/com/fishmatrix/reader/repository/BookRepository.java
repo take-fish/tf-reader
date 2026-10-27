@@ -1,5 +1,7 @@
 package com.fishmatrix.reader.repository;
 
+import com.fishmatrix.reader.domain.BookScope;
+import com.fishmatrix.reader.domain.BookStatus;
 import com.fishmatrix.reader.model.ChapterContent;
 import com.fishmatrix.reader.model.ChapterSummary;
 import com.fishmatrix.reader.util.Texts;
@@ -41,7 +43,7 @@ public class BookRepository {
                 .usingGeneratedKeyColumns("id");
     }
 
-    public List<BookRecord> findPublic(Long categoryId, String keyword, int offset, int limit) {
+    public List<BookRecord> findPublic(Long categoryId, String keyword, long offset, int limit) {
         StringBuilder sql = new StringBuilder(SELECT_BOOK)
                 .append(" WHERE b.scope = 'PUBLIC' AND b.status = 'VISIBLE'");
         List<Object> args = new java.util.ArrayList<>();
@@ -142,7 +144,7 @@ public class BookRepository {
     }
 
     public long insertBook(String title, String author, String description, int chapterCount,
-            String scope, Long ownerId, String ownerNickname, Long categoryId,
+            BookScope scope, Long ownerId, String ownerNickname, Long categoryId,
             String sourceFilename, String storageKey, long fileSize, String sha256,
             Instant now) {
         Map<String, Object> params = new HashMap<>();
@@ -150,11 +152,11 @@ public class BookRepository {
         params.put("author", author);
         params.put("description", description);
         params.put("chapter_count", chapterCount);
-        params.put("scope", scope);
+        params.put("scope", scope.getValue());
         params.put("owner_id", ownerId);
         params.put("owner_nickname", ownerNickname);
         params.put("category_id", categoryId);
-        params.put("status", "VISIBLE");
+        params.put("status", BookStatus.VISIBLE.getValue());
         params.put("source_filename", sourceFilename);
         params.put("storage_key", storageKey);
         params.put("file_size", fileSize);
@@ -177,10 +179,11 @@ public class BookRepository {
     }
 
     public void updateMetadata(long bookId, String title, String author, String description,
-            Long categoryId, String status, Instant now) {
+            Long categoryId, BookStatus status, Instant now) {
         jdbc.update("UPDATE reader_book SET title = ?, author = ?, description = ?,"
                         + " category_id = ?, status = ?, updated_at = ? WHERE id = ?",
-                title, author, description, categoryId, status, Timestamp.from(now), bookId);
+                title, author, description, categoryId, status.getValue(),
+                Timestamp.from(now), bookId);
     }
 
     public void updateShareToken(long bookId, String shareToken, Instant now) {
@@ -205,12 +208,12 @@ public class BookRepository {
                 rs.getString("author"),
                 rs.getString("description"),
                 rs.getInt("chapter_count"),
-                rs.getString("scope"),
+                BookScope.valueOf(rs.getString("scope")),
                 rs.getObject("owner_id", Long.class),
                 rs.getString("owner_nickname"),
                 rs.getObject("category_id", Long.class),
                 rs.getString("category_name"),
-                rs.getString("status"),
+                BookStatus.valueOf(rs.getString("status")),
                 rs.getString("share_token"),
                 rs.getString("storage_key"),
                 rs.getString("source_filename"),
@@ -226,12 +229,12 @@ public class BookRepository {
             String author,
             String description,
             int chapterCount,
-            String scope,
+            BookScope scope,
             Long ownerId,
             String ownerNickname,
             Long categoryId,
             String categoryName,
-            String status,
+            BookStatus status,
             String shareToken,
             String storageKey,
             String sourceFilename,
@@ -241,15 +244,15 @@ public class BookRepository {
             Instant updatedAt) {
 
         public boolean isPublic() {
-            return "PUBLIC".equals(scope);
+            return scope.isPublic();
         }
 
         public boolean isPrivate() {
-            return "PRIVATE".equals(scope);
+            return scope.isPrivate();
         }
 
         public boolean isVisible() {
-            return "VISIBLE".equals(status);
+            return status.isVisible();
         }
 
         public boolean isOwnedBy(long userId) {

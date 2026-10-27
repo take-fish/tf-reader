@@ -25,12 +25,16 @@ spring:
         import-check:
           enabled: false
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:10.28.13.214}:${MYSQL_PORT:3306}/${MYSQL_DB:fm_reader}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    # 默认值刻意指向本机：漏配环境变量时连不上并报错，而不是静默连到生产库。
+    # 生产/测试栈由 compose 注入 MYSQL_HOST/PORT/DB（见 reader配置/*/.env），不依赖这里的默认值。
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/${MYSQL_DB:fm_reader}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: ${MYSQL_APP_USER:fm_reader_app}
     password: ${MYSQL_APP_PASSWORD:}
   data:
     redis:
-      host: ${REDIS_HOST:10.28.13.214}
+      # 与数据源同样的原则：默认指向本机，漏配就快速失败，而不是静默连到共享 Redis。
+      # 目前阅读服务尚未使用 Redis，保留依赖是为了将来多实例部署时的共享状态。
+      host: ${REDIS_HOST:127.0.0.1}
       port: ${REDIS_PORT:6379}
       database: ${REDIS_DATABASE:0}
   sql:
@@ -45,6 +49,15 @@ spring:
 server:
   port: 8103
   shutdown: graceful
+
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
 
 app:
   # 运行环境标识：统一 JSON 日志的 env 字段来源；生产/测试栈分别注入 production/test

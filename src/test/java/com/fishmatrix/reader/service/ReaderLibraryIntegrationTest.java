@@ -5,19 +5,24 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fishmatrix.common.auth.CurrentUser;
 import com.fishmatrix.common.error.ApiException;
+import com.fishmatrix.reader.domain.AccessRequestStatus;
+import com.fishmatrix.reader.domain.BookScope;
+import com.fishmatrix.reader.domain.BookStatus;
+import com.fishmatrix.reader.error.NotFoundException;
 import com.fishmatrix.reader.model.AccessRequestCreate;
 import com.fishmatrix.reader.model.AccessRequestView;
+import com.fishmatrix.reader.model.BookPage;
 import com.fishmatrix.reader.model.BookSummary;
 import com.fishmatrix.reader.model.BookUpdateRequest;
 import com.fishmatrix.reader.model.Category;
 import com.fishmatrix.reader.model.CategoryRequest;
-import com.fishmatrix.reader.model.NotFoundException;
 import com.fishmatrix.reader.model.Shelf;
 import com.fishmatrix.reader.model.ShelfDetail;
 import com.fishmatrix.reader.model.ShelfRequest;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -58,7 +63,7 @@ class ReaderLibraryIntegrationTest {
                 .isEqualTo(403);
 
         BookSummary book = importBook("public", owner);
-        assertThat(book.scope()).isEqualTo("PUBLIC");
+        assertThat(book.scope()).isEqualTo(BookScope.PUBLIC);
         assertThat(book.ownerId()).isEqualTo(owner.id());
         assertThat(book.chapterCount()).isEqualTo(2);
         assertThat(book.mine()).isTrue();
@@ -97,7 +102,7 @@ class ReaderLibraryIntegrationTest {
 
         AccessRequestView request = accessRequestService.request(
                 book.id(), new AccessRequestCreate(token, "想看"), stranger);
-        assertThat(request.status()).isEqualTo("PENDING");
+        assertThat(request.status()).isEqualTo(AccessRequestStatus.PENDING);
         assertThat(accessRequestService.request(
                 book.id(), new AccessRequestCreate(token, "再申请"), stranger).id())
                 .isEqualTo(request.id());
@@ -155,15 +160,15 @@ class ReaderLibraryIntegrationTest {
     void hiddenPublicBookIsOnlyVisibleToManagers() {
         BookSummary book = importBook("public", owner);
         libraryService.update(book.id(),
-                new BookUpdateRequest(null, null, null, null, "HIDDEN"), admin);
+                new BookUpdateRequest(null, null, null, null, BookStatus.HIDDEN), admin);
 
         assertThatThrownBy(() -> libraryService.getBook(book.id(), stranger))
                 .isInstanceOf(NotFoundException.class);
         assertThat(libraryService.getBook(book.id(), admin).book().status())
-                .isEqualTo("HIDDEN");
+                .isEqualTo(BookStatus.HIDDEN);
         // 状态变更（恢复可见）同样需要内容管理权限，书籍所有者也无权自行放行。
         assertThatThrownBy(() -> libraryService.update(book.id(),
-                new BookUpdateRequest(null, null, null, null, "VISIBLE"), owner))
+                new BookUpdateRequest(null, null, null, null, BookStatus.VISIBLE), owner))
                 .isInstanceOf(ApiException.class)
                 .extracting(error -> ((ApiException) error).status().value())
                 .isEqualTo(403);
@@ -208,6 +213,34 @@ class ReaderLibraryIntegrationTest {
 
         shelfService.removeBook(shelf.id(), mine.id(), owner);
         assertThat(shelfService.get(shelf.id(), owner).books()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("页码与页大小都被钳制：超大 page 不会让 (page * size) 溢出成负 offset")
+    void oversizedPagingIsClamped() {
+        importBook("public", owner);
+
+        BookPage normal = libraryService.listPublic(null, null, 0, 20, owner);
+        assertThat(normal.page()).isZero();
+        assertThat(normal.size()).isEqualTo(20);
+        assertThat(normal.total()).isGreaterThanOrEqualTo(1);
+
+        BookPage overflow = libraryService.listPublic(null, null, Integer.MAX_VALUE, 1_000, owner);
+        assertThat(overflow.page()).isEqualTo(10_000);
+        assertThat(overflow.size()).isEqualTo(100);
+        assertThat(overflow.books()).isEmpty();
+
+        assertThat(libraryService.listPublic(null, null, -5, -1, owner).page()).isZero();
+        assertThat(libraryService.listPublic(null, null, -5, -1, owner).size()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("更新不存在的分类返回 404，而不是 400")
+    void updatingMissingCategoryIsNotFound() {
+        assertThatThrownBy(() -> categoryService.update(999_999L, new CategoryRequest("不存在", 0)))
+                .isInstanceOf(NotFoundException.class)
+                .extracting(error -> ((NotFoundException) error).status().value())
+                .isEqualTo(404);
     }
 
     private BookSummary importBook(String scope, CurrentUser who) {

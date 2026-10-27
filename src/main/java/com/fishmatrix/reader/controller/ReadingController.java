@@ -1,13 +1,14 @@
 package com.fishmatrix.reader.controller;
 
 import com.fishmatrix.common.auth.UserContext;
+import com.fishmatrix.common.error.ApiException;
 import com.fishmatrix.reader.model.Bookmark;
+import com.fishmatrix.reader.model.BookmarkList;
 import com.fishmatrix.reader.model.BookmarkRequest;
 import com.fishmatrix.reader.model.ProgressRequest;
-import com.fishmatrix.reader.model.ReadingProgress;
+import com.fishmatrix.reader.model.ProgressResponse;
 import com.fishmatrix.reader.service.ReadingService;
-import java.util.List;
-import java.util.Map;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,9 +40,9 @@ public class ReadingController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void saveProgress(
             @PathVariable long bookId,
-            @RequestBody ProgressRequest request) {
+            @Valid @RequestBody ProgressRequest request) {
         if (request == null) {
-            throw new IllegalArgumentException("请求体不能为空");
+            throw ApiException.badRequest("请求体不能为空");
         }
         readingService.saveProgress(
                 UserContext.require(),
@@ -51,17 +52,15 @@ public class ReadingController {
     }
 
     @GetMapping("/books/{bookId}/bookmarks")
-    public Map<String, Object> bookmarks(@PathVariable long bookId) {
-        List<Bookmark> bookmarks = readingService.listBookmarks(
-                UserContext.require(), bookId);
-        return Map.of("bookmarks", bookmarks);
+    public BookmarkList bookmarks(@PathVariable long bookId) {
+        return new BookmarkList(readingService.listBookmarks(UserContext.require(), bookId));
     }
 
     @PostMapping("/books/{bookId}/bookmarks")
     @ResponseStatus(HttpStatus.CREATED)
     public Bookmark addBookmark(
             @PathVariable long bookId,
-            @RequestBody BookmarkRequest request) {
+            @Valid @RequestBody BookmarkRequest request) {
         return readingService.addBookmark(bookId, request, UserContext.require());
     }
 
@@ -69,8 +68,5 @@ public class ReadingController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteBookmark(@PathVariable long bookmarkId) {
         readingService.deleteBookmark(bookmarkId, UserContext.require());
-    }
-
-    public record ProgressResponse(ReadingProgress progress) {
     }
 }

@@ -1,9 +1,10 @@
 package com.fishmatrix.reader.service;
 
 import com.fishmatrix.common.auth.CurrentUser;
+import com.fishmatrix.common.error.ApiException;
+import com.fishmatrix.reader.error.NotFoundException;
 import com.fishmatrix.reader.model.Bookmark;
 import com.fishmatrix.reader.model.BookmarkRequest;
-import com.fishmatrix.reader.model.NotFoundException;
 import com.fishmatrix.reader.model.ReadingProgress;
 import com.fishmatrix.reader.repository.BookRepository.BookRecord;
 import com.fishmatrix.reader.repository.ReadingRepository;
@@ -45,12 +46,12 @@ public class ReadingService {
 
     public Bookmark addBookmark(long bookId, BookmarkRequest request, CurrentUser viewer) {
         if (request == null) {
-            throw new IllegalArgumentException("请求体不能为空");
+            throw ApiException.badRequest("请求体不能为空");
         }
         BookRecord book = libraryService.requireReadable(bookId, viewer);
         Validation.requireChapterIndex(request.chapterIndex(), book.chapterCount());
         if (request.paragraphIndex() < 0) {
-            throw new IllegalArgumentException("段落索引不合法");
+            throw ApiException.badRequest("段落索引不合法");
         }
         String excerpt = Validation.text(request.excerpt(), 512, "摘录", false);
         String note = Validation.text(request.note(), 500, "批注", false);
