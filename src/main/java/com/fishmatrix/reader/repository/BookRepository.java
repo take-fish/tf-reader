@@ -9,10 +9,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Repository;
@@ -113,6 +116,37 @@ public class BookRepository {
                         + " WHERE book_id = ? AND requester_id = ? AND status = 'APPROVED'",
                 Long.class, bookId, viewerId);
         return count != null && count > 0;
+    }
+
+    /** 批量读取，供书单等"一次展示多本书"的场景使用，避免逐本查询。 */
+    public List<BookRecord> findByIdIn(List<Long> bookIds) {
+        if (bookIds == null || bookIds.isEmpty()) {
+            return List.of();
+        }
+        Object[] args = bookIds.toArray();
+        return jdbc.query(SELECT_BOOK + " WHERE b.id IN (" + placeholders(bookIds.size()) + ")",
+                this::mapBook, args);
+    }
+
+    /** 批量查询当前用户已获批准的书籍 id，供批量判定可读性使用。 */
+    public Set<Long> findApprovedBookIds(long viewerId, List<Long> bookIds) {
+        if (bookIds == null || bookIds.isEmpty()) {
+            return Set.of();
+        }
+        Object[] args = new Object[bookIds.size() + 1];
+        args[0] = viewerId;
+        for (int i = 0; i < bookIds.size(); i++) {
+            args[i + 1] = bookIds.get(i);
+        }
+        return new HashSet<>(jdbc.queryForList(
+                "SELECT book_id FROM reader_access_request"
+                        + " WHERE requester_id = ? AND status = 'APPROVED'"
+                        + " AND book_id IN (" + placeholders(bookIds.size()) + ")",
+                Long.class, args));
+    }
+
+    private static String placeholders(int count) {
+        return String.join(",", Collections.nCopies(count, "?"));
     }
 
     public List<ChapterSummary> findChapters(long bookId) {
