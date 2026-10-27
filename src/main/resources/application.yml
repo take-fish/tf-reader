@@ -43,8 +43,10 @@ spring:
       encoding: UTF-8
   servlet:
     multipart:
-      max-file-size: 8MB
-      max-request-size: 9MB
+      # 与 app.reader.max-import-bytes / fm.storage.max-file-bytes 保持一致（25 MiB）；
+      # max-request-size 留 1MB 余量给表单其他字段。
+      max-file-size: 25MB
+      max-request-size: 26MB
 
 server:
   port: 8103
@@ -64,7 +66,7 @@ app:
   environment: ${APP_ENV:production}
   version: ${APP_VERSION:dev}
   reader:
-    max-import-bytes: ${READER_MAX_IMPORT_BYTES:8388608}
+    max-import-bytes: ${READER_MAX_IMPORT_BYTES:26214400}
 
 management:
   tracing:
@@ -100,4 +102,4 @@ fm:
   storage:
     enabled: ${FM_STORAGE_ENABLED:true}
     base-dir: ${FM_STORAGE_BASE_DIR:./data/files}
-    max-file-bytes: ${FM_STORAGE_MAX_BYTES:8388608}
+    max-file-bytes: ${FM_STORAGE_MAX_BYTES:26214400}

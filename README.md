@@ -8,7 +8,7 @@ FishMatrix（摸鱼矩阵）阅读服务：公共书库、个人书库、书单�
 - 文件：书籍原文落本地命名卷（`fm.storage`），库表只存 `storage_key` 与 SHA-256
 - 鉴权：统一使用用户中台身份（`Authorization: Bearer` 或网关签名身份头），权限码来自用户中台
 - 内置演示数据集：`古文观止·精选`（3 章公版选段），仅由测试迁移 seed `db/testdata/R__demo_books.sql` 写入
-- 支持导入 UTF-8 / GBK txt（≤8 MiB，按 `第X章/回/节/卷` 拆分）
+- 支持导入 UTF-8 / GBK txt（≤25 MiB，按 `第X章/回/节/卷` 拆分）
 
 ## 功能分级
 
@@ -82,7 +82,7 @@ fm:
   storage:
     enabled: true
     base-dir: ${FM_STORAGE_BASE_DIR:/app/data/files}
-    max-file-bytes: 8388608
+    max-file-bytes: 26214400
   messaging:
     enabled: false
   rpc:
@@ -110,7 +110,7 @@ fm:
 | `FM_STORAGE_ENABLED` / `FM_STORAGE_BASE_DIR` | `true` / `./data/files` | 文件存储与命名卷挂载点（容器内由 compose 覆盖为 `/app/data/files`） |
 | `SQL_INIT_MODE` | `never` | 业务容器不执行 SQL 初始化 |
 | `SPRING_FLYWAY_ENABLED` | `false` | 业务容器不执行迁移，由 `db-migrate-reader` 负责 |
-| `READER_MAX_IMPORT_BYTES` | `8388608` | 导入文件上限 |
+| `READER_MAX_IMPORT_BYTES` | `26214400` | 导入文件上限（25 MiB） |
 
 ## 本地开发
 
