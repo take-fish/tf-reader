@@ -53,6 +53,7 @@ public class LibraryService {
     private final ChapterParser chapterParser;
     private final FileStorage storage;
     private final BookAccessPolicy accessPolicy;
+    private final ExperienceService experienceService;
     private final long maxImportBytes;
 
     public LibraryService(
@@ -61,12 +62,14 @@ public class LibraryService {
             ChapterParser chapterParser,
             FileStorage storage,
             BookAccessPolicy accessPolicy,
-            @Value("${app.reader.max-import-bytes:8388608}") long maxImportBytes) {
+            ExperienceService experienceService,
+            @Value("${app.reader.max-import-bytes:26214400}") long maxImportBytes) {
         this.bookRepository = bookRepository;
         this.categoryRepository = categoryRepository;
         this.chapterParser = chapterParser;
         this.storage = storage;
         this.accessPolicy = accessPolicy;
+        this.experienceService = experienceService;
         this.maxImportBytes = maxImportBytes;
     }
 
@@ -187,6 +190,7 @@ public class LibraryService {
             storage.delete(stored.storageKey());
             throw exception;
         }
+        experienceService.rewardUpload(viewer.id());
         log.info("导入书籍完成",
                 kv("event", "book.imported"),
                 kv("book_id", bookId),
