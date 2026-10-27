@@ -35,9 +35,10 @@ int safeSize = Math.min(MAX_PAGE_SIZE, Math.max(1, size));
 bookRepository.findPublic(categoryId, keyword, safePage * safeSize, safeSize)
 ```
 
-`page` 直接来自 `@RequestParam`，没有任何上限。`page=21474836, size=100` 时
-`safePage * safeSize` 溢出成**负数**，SQL 变成 `LIMIT 100 OFFSET -2147483600`，
-轻则 `SQLException` → 500，重则数据库做全表扫描。
+`page` 直接来自 `@RequestParam`，没有任何上限。`size=100` 时，只要 `page ≥ 21474837`，
+`safePage * safeSize` 就溢出成**负数**（实测：`page=21474837` → `-2147483596`，
+`page=Integer.MAX_VALUE` → `-100`）。SQL 变成 `LIMIT 100 OFFSET -2147483596`，
+MySQL / H2 会直接报语法错误 → `SQLException` → 500。
 
 `safeSize` 有钳制，`safePage` 没有 —— 只钳了一半。
 
@@ -492,3 +493,26 @@ return new BookPage(books, books.size(), 0, books.size());
 - P0-4「默认指向生产」可能是团队**有意**的部署约定，若是，请在 README 里写明理由并加启动横幅警告；
   本报告按"最小惊讶原则"仍判为 P0。
 - 未审计 `tf-common` 的安全实现（`IdentitySigner`、`LocalFileStorage` 路径处理），建议单独一轮。
+
+---
+
+## 7. 整改进度
+
+### 第一批（commit `7809011`，已合入 `test`）
+
+| 项 | 状态 | 处理方式 |
+|---|---|---|
+| P0-1 分页 offset 溢出 | ✅ 已修 | `page` 加 10000 上限；offset 改 `long` 计算 |
+| P0-5 裸 `orElseThrow()` ×9 | ✅ 已修 | 全部改为 `NotFoundException`；`CategoryService.update` 顺带由 400 改 404 |
+| P0-4 默认数据源指向生产 | ✅ 已修 | 默认改 `127.0.0.1`；部署侧 compose 均为必填项，行为不变 |
+| P0-2 容器 root 运行 | ⏸ 缓修 | 内网 + 少数用户，安全类，按决策暂缓 |
+| P0-3 健康检查暴露细节 | ⏸ 缓修 | 同上；建议随下次镜像构建顺带改，成本极低 |
+
+> 勘误：本报告初版在 P0-1 写的是 `page=21474836` 会溢出。实测该值并不溢出
+> （`21474836 × 100 = 2147483600`，仍在 `int` 范围内），边界是 **21474837**。
+> 已按实测值更正，结论不变。
+
+### 后续批次
+
+P1 / P2 按「一期：框架与代码统一」推进，顺序见第 5 节。
+
