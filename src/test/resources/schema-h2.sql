@@ -126,3 +126,32 @@ CREATE INDEX IF NOT EXISTS idx_reader_access_owner
 
 CREATE INDEX IF NOT EXISTS idx_reader_access_requester
     ON reader_access_request (requester_id, status, updated_at);
+
+-- V3: 经验值与等级（与 db/migration/V3__reader_experience.sql 保持一致）
+CREATE TABLE IF NOT EXISTS reader_user_stats (
+    user_id BIGINT NOT NULL,
+    experience INT NOT NULL DEFAULT 0,
+    user_level TINYINT NOT NULL DEFAULT 9,
+    upload_count INT NOT NULL DEFAULT 0,
+    reading_minutes BIGINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP(3) NOT NULL,
+    updated_at TIMESTAMP(3) NOT NULL,
+    PRIMARY KEY (user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_reader_user_stats_experience
+    ON reader_user_stats (experience);
+
+CREATE TABLE IF NOT EXISTS reader_reading_stat (
+    user_id BIGINT NOT NULL,
+    book_id BIGINT NOT NULL,
+    minutes INT NOT NULL DEFAULT 0,
+    rewarded_hours INT NOT NULL DEFAULT 0,
+    last_heartbeat_at TIMESTAMP(3) NULL,
+    created_at TIMESTAMP(3) NOT NULL,
+    updated_at TIMESTAMP(3) NOT NULL,
+    PRIMARY KEY (user_id, book_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_reader_reading_stat_book
+    ON reader_reading_stat (book_id);
