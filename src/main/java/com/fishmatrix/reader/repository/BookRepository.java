@@ -32,17 +32,16 @@ public class BookRepository {
               LEFT JOIN reader_category c ON c.id = b.category_id
             """;
 
+    /** 批量写章节时每批的条数，兼顾吞吐与单条 SQL 体积。 */
+    private static final int CHAPTER_BATCH_SIZE = 200;
+
     private final JdbcTemplate jdbc;
     private final SimpleJdbcInsert bookInsert;
-    private final SimpleJdbcInsert chapterInsert;
 
     public BookRepository(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
         this.bookInsert = new SimpleJdbcInsert(jdbc)
                 .withTableName("reader_book")
-                .usingGeneratedKeyColumns("id");
-        this.chapterInsert = new SimpleJdbcInsert(jdbc)
-                .withTableName("reader_chapter")
                 .usingGeneratedKeyColumns("id");
     }
 
@@ -201,15 +200,30 @@ public class BookRepository {
         return key.longValue();
     }
 
-    public void insertChapter(long bookId, int chapterIndex, String title, String content,
-            int wordCount) {
-        Map<String, Object> params = new HashMap<>();
-        params.put("book_id", bookId);
-        params.put("chapter_index", chapterIndex);
-        params.put("title", title);
-        params.put("content", content);
-        params.put("word_count", wordCount);
-        chapterInsert.execute(params);
+    /**
+     * 批量写入章节。单本 25MiB 的 txt 可能上千章，逐条 insert 是 N 次往返，慢到不可接受。
+     * 分批是为了控制单条 SQL 的体积（章节正文是 MEDIUMTEXT，一批太大容易撞 max_allowed_packet）。
+     */
+    public void insertChapters(long bookId, List<ChapterRow> chapters) {
+        if (chapters.isEmpty()) {
+            return;
+        }
+        String sql = "INSERT INTO reader_chapter (book_id, chapter_index, title, content, word_count)"
+                + " VALUES (?, ?, ?, ?, ?)";
+        for (int start = 0; start < chapters.size(); start += CHAPTER_BATCH_SIZE) {
+            int end = Math.min(chapters.size(), start + CHAPTER_BATCH_SIZE);
+            List<Object[]> batch = new java.util.ArrayList<>(end - start);
+            for (ChapterRow chapter : chapters.subList(start, end)) {
+                batch.add(new Object[] {
+                    bookId, chapter.index(), chapter.title(), chapter.content(), chapter.wordCount()
+                });
+            }
+            jdbc.batchUpdate(sql, batch);
+        }
+    }
+
+    /** 待写入的章节行。与解析器的 ParsedChapter 分开，避免 repository 反向依赖 parser。 */
+    public record ChapterRow(int index, String title, String content, int wordCount) {
     }
 
     public void updateMetadata(long bookId, String title, String author, String description,

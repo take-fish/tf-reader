@@ -21,6 +21,7 @@ import com.fishmatrix.reader.parser.ChapterParser.ParsedChapter;
 import com.fishmatrix.reader.policy.BookAccessPolicy;
 import com.fishmatrix.reader.repository.BookRepository;
 import com.fishmatrix.reader.repository.BookRepository.BookRecord;
+import com.fishmatrix.reader.repository.BookRepository.ChapterRow;
 import com.fishmatrix.reader.repository.CategoryRepository;
 import com.fishmatrix.reader.util.Texts;
 import com.fishmatrix.reader.util.Validation;
@@ -28,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
@@ -53,7 +55,7 @@ public class LibraryService {
     private final ChapterParser chapterParser;
     private final FileStorage storage;
     private final BookAccessPolicy accessPolicy;
-    private final ExperienceService experienceService;
+    private final BookImportWriter bookImportWriter;
     private final long maxImportBytes;
 
     public LibraryService(
@@ -62,14 +64,14 @@ public class LibraryService {
             ChapterParser chapterParser,
             FileStorage storage,
             BookAccessPolicy accessPolicy,
-            ExperienceService experienceService,
+            BookImportWriter bookImportWriter,
             @Value("${app.reader.max-import-bytes:26214400}") long maxImportBytes) {
         this.bookRepository = bookRepository;
         this.categoryRepository = categoryRepository;
         this.chapterParser = chapterParser;
         this.storage = storage;
         this.accessPolicy = accessPolicy;
-        this.experienceService = experienceService;
+        this.bookImportWriter = bookImportWriter;
         this.maxImportBytes = maxImportBytes;
     }
 
@@ -110,7 +112,7 @@ public class LibraryService {
                 .orElseThrow(() -> new NotFoundException("章节不存在"));
     }
 
-    @Transactional
+    /** 注意：这里刻意不加 @Transactional —— 文件落盘与章节解析都在事务之外，写库交给 BookImportWriter。 */
     public BookSummary importBook(String scope, String title, String author, Long categoryId,
             MultipartFile file, CurrentUser viewer) {
         BookScope normalizedScope = normalizeScope(scope);
@@ -161,14 +163,22 @@ public class LibraryService {
         String cleanAuthor = Validation.truncate(author, 128);
         String description = Validation.truncate(
                 "导入文本 · " + chapters.size() + " 章 · " + Texts.wordCount(text) + " 字", 1024);
-        Instant now = Instant.now();
+
+        List<ChapterRow> rows = new ArrayList<>(chapters.size());
+        for (int i = 0; i < chapters.size(); i++) {
+            ParsedChapter chapter = chapters.get(i);
+            String chapterTitle = chapter.title().isBlank()
+                    ? "第 " + (i + 1) + " 节" : chapter.title();
+            rows.add(new ChapterRow(i, Validation.truncate(chapterTitle, 255),
+                    chapter.content(), chapter.wordCount()));
+        }
+
         long bookId;
         try {
-            bookId = bookRepository.insertBook(
+            bookId = bookImportWriter.persist(new BookImportWriter.ImportDraft(
                     cleanTitle,
                     cleanAuthor,
                     description,
-                    chapters.size(),
                     normalizedScope,
                     viewer.id(),
                     Validation.truncate(viewer.nickname(), 32),
@@ -177,20 +187,12 @@ public class LibraryService {
                     stored.storageKey(),
                     stored.size(),
                     stored.sha256(),
-                    now);
-            for (int i = 0; i < chapters.size(); i++) {
-                ParsedChapter chapter = chapters.get(i);
-                String chapterTitle = chapter.title().isBlank()
-                        ? "第 " + (i + 1) + " 节" : chapter.title();
-                bookRepository.insertChapter(bookId, i,
-                        Validation.truncate(chapterTitle, 255),
-                        chapter.content(), chapter.wordCount());
-            }
+                    rows));
         } catch (RuntimeException exception) {
+            // 落库失败会整体回滚，但文件已经写到磁盘上了，这里补一次清理避免留下孤儿文件
             storage.delete(stored.storageKey());
             throw exception;
         }
-        experienceService.rewardUpload(viewer.id());
         log.info("导入书籍完成",
                 kv("event", "book.imported"),
                 kv("book_id", bookId),
