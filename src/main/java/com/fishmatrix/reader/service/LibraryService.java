@@ -9,6 +9,7 @@ import com.fishmatrix.common.storage.StoredFile;
 import com.fishmatrix.reader.domain.BookScope;
 import com.fishmatrix.reader.domain.BookStatus;
 import com.fishmatrix.reader.error.NotFoundException;
+import com.fishmatrix.reader.mapper.ReaderCategoryMapper;
 import com.fishmatrix.reader.model.BookDetail;
 import com.fishmatrix.reader.model.BookPage;
 import com.fishmatrix.reader.model.BookSummary;
@@ -22,7 +23,6 @@ import com.fishmatrix.reader.policy.BookAccessPolicy;
 import com.fishmatrix.reader.repository.BookRepository;
 import com.fishmatrix.reader.repository.BookRepository.BookRecord;
 import com.fishmatrix.reader.repository.BookRepository.ChapterRow;
-import com.fishmatrix.reader.repository.CategoryRepository;
 import com.fishmatrix.reader.util.Texts;
 import com.fishmatrix.reader.util.Validation;
 import java.io.IOException;
@@ -51,7 +51,7 @@ public class LibraryService {
     private static final int MAX_PAGE = 10_000;
 
     private final BookRepository bookRepository;
-    private final CategoryRepository categoryRepository;
+    private final ReaderCategoryMapper categoryMapper;
     private final ChapterParser chapterParser;
     private final FileStorage storage;
     private final BookAccessPolicy accessPolicy;
@@ -60,14 +60,14 @@ public class LibraryService {
 
     public LibraryService(
             BookRepository bookRepository,
-            CategoryRepository categoryRepository,
+            ReaderCategoryMapper categoryMapper,
             ChapterParser chapterParser,
             FileStorage storage,
             BookAccessPolicy accessPolicy,
             BookImportWriter bookImportWriter,
             @Value("${app.reader.max-import-bytes:26214400}") long maxImportBytes) {
         this.bookRepository = bookRepository;
-        this.categoryRepository = categoryRepository;
+        this.categoryMapper = categoryMapper;
         this.chapterParser = chapterParser;
         this.storage = storage;
         this.accessPolicy = accessPolicy;
@@ -316,8 +316,9 @@ public class LibraryService {
     }
 
     private void requireCategory(long categoryId) {
-        categoryRepository.findById(categoryId)
-                .orElseThrow(() -> ApiException.badRequest("分类不存在"));
+        if (categoryMapper.selectById(categoryId) == null) {
+            throw ApiException.badRequest("分类不存在");
+        }
     }
 
     private static void requirePermission(CurrentUser viewer, String permission) {
