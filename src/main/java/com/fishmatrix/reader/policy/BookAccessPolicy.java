@@ -6,6 +6,7 @@ import com.fishmatrix.reader.error.NotFoundException;
 import com.fishmatrix.reader.repository.BookRepository;
 import com.fishmatrix.reader.repository.BookRepository.BookRecord;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
@@ -15,16 +16,13 @@ import org.springframework.stereotype.Component;
  * {@code ShelfService} 各写了一份，改一处漏一处就是越权入口，因此收敛到这里。</p>
  */
 @Component
+@RequiredArgsConstructor
 public class BookAccessPolicy {
 
     /** 管理任意公共书籍的权限；私有书籍不在此列，私有内容只属于所有者。 */
     private static final String PERMISSION_MANAGE_ANY = "reader.content.manage.any";
 
     private final BookRepository bookRepository;
-
-    public BookAccessPolicy(BookRepository bookRepository) {
-        this.bookRepository = bookRepository;
-    }
 
     public boolean canRead(BookRecord book, CurrentUser viewer) {
         if (book.isPrivate()) {

@@ -12,19 +12,16 @@ import com.fishmatrix.reader.util.Validation;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class ReadingService {
 
     private final LibraryService libraryService;
     private final ReadingRepository readingRepository;
-
-    public ReadingService(LibraryService libraryService, ReadingRepository readingRepository) {
-        this.libraryService = libraryService;
-        this.readingRepository = readingRepository;
-    }
 
     public Optional<ReadingProgress> getProgress(CurrentUser viewer, long bookId) {
         libraryService.requireReadable(bookId, viewer);

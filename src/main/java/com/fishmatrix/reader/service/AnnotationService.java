@@ -12,9 +12,11 @@ import com.fishmatrix.reader.repository.BookRepository.BookRecord;
 import com.fishmatrix.reader.util.Validation;
 import java.time.Instant;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class AnnotationService {
 
     private static final int MAX_BATCH = 200;
@@ -22,15 +24,6 @@ public class AnnotationService {
     private final LibraryService libraryService;
     private final BookRepository bookRepository;
     private final AnnotationRepository annotationRepository;
-
-    public AnnotationService(
-            LibraryService libraryService,
-            BookRepository bookRepository,
-            AnnotationRepository annotationRepository) {
-        this.libraryService = libraryService;
-        this.bookRepository = bookRepository;
-        this.annotationRepository = annotationRepository;
-    }
 
     public List<Annotation> listBookAnnotations(long bookId, int chapterIndex, long afterId,
             int limit, CurrentUser viewer) {

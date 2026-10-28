@@ -8,6 +8,7 @@ import com.fishmatrix.reader.model.AccessRequestList;
 import com.fishmatrix.reader.model.AccessRequestView;
 import com.fishmatrix.reader.service.AccessRequestService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,13 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/reader")
+@RequiredArgsConstructor
 public class AccessRequestController {
 
     private final AccessRequestService service;
-
-    public AccessRequestController(AccessRequestService service) {
-        this.service = service;
-    }
 
     @PostMapping("/books/{bookId}/access-requests")
     @ResponseStatus(HttpStatus.CREATED)

@@ -6,6 +6,7 @@ import com.fishmatrix.reader.model.AnnotationList;
 import com.fishmatrix.reader.model.AnnotationRequest;
 import com.fishmatrix.reader.service.AnnotationService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,13 +19,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/reader")
+@RequiredArgsConstructor
 public class AnnotationController {
 
     private final AnnotationService annotationService;
-
-    public AnnotationController(AnnotationService annotationService) {
-        this.annotationService = annotationService;
-    }
 
     @GetMapping("/books/{bookId}/chapters/{chapterIndex}/annotations")
     public AnnotationList annotations(

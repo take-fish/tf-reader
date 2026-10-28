@@ -31,17 +31,15 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
+@Slf4j
 public class LibraryService {
-
-    private static final Logger log = LoggerFactory.getLogger(LibraryService.class);
 
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int MAX_PAGE_SIZE = 100;

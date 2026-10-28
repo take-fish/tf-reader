@@ -8,17 +8,15 @@ import com.fishmatrix.reader.repository.CategoryRepository;
 import com.fishmatrix.reader.util.Validation;
 import java.time.Instant;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class CategoryService {
 
     private final CategoryRepository repository;
-
-    public CategoryService(CategoryRepository repository) {
-        this.repository = repository;
-    }
 
     public List<Category> list() {
         return repository.findAll();

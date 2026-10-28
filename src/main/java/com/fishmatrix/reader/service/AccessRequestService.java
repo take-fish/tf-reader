@@ -17,28 +17,21 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class AccessRequestService {
-
-    private static final Logger log = LoggerFactory.getLogger(AccessRequestService.class);
 
     private static final Duration REJECT_COOLDOWN = Duration.ofHours(24);
 
     private final AccessRequestRepository repository;
     private final BookRepository bookRepository;
     private final LibraryService libraryService;
-
-    public AccessRequestService(AccessRequestRepository repository,
-            BookRepository bookRepository, LibraryService libraryService) {
-        this.repository = repository;
-        this.bookRepository = bookRepository;
-        this.libraryService = libraryService;
-    }
 
     @Transactional
     public AccessRequestView request(long bookId, AccessRequestCreate create, CurrentUser viewer) {

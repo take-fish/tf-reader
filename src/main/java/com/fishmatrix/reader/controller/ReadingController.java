@@ -9,6 +9,7 @@ import com.fishmatrix.reader.model.ProgressRequest;
 import com.fishmatrix.reader.model.ProgressResponse;
 import com.fishmatrix.reader.service.ReadingService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,13 +23,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/reader")
+@RequiredArgsConstructor
 public class ReadingController {
 
     private final ReadingService readingService;
-
-    public ReadingController(ReadingService readingService) {
-        this.readingService = readingService;
-    }
 
     @GetMapping("/books/{bookId}/progress")
     public ProgressResponse progress(@PathVariable long bookId) {

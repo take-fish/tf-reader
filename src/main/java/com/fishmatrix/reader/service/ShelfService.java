@@ -18,24 +18,18 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class ShelfService {
 
     private final ShelfRepository shelfRepository;
     private final BookRepository bookRepository;
     private final LibraryService libraryService;
     private final BookAccessPolicy accessPolicy;
-
-    public ShelfService(ShelfRepository shelfRepository, BookRepository bookRepository,
-            LibraryService libraryService, BookAccessPolicy accessPolicy) {
-        this.shelfRepository = shelfRepository;
-        this.bookRepository = bookRepository;
-        this.libraryService = libraryService;
-        this.accessPolicy = accessPolicy;
-    }
 
     public List<Shelf> list(CurrentUser viewer) {
         return shelfRepository.findByOwner(viewer.id());

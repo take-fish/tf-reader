@@ -10,6 +10,7 @@ import com.fishmatrix.reader.repository.BookRepository;
 import com.fishmatrix.reader.repository.BookRepository.BookRecord;
 import java.time.Duration;
 import java.time.Instant;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 且单次间隔封顶 5 分钟，避免挂机或伪造超长间隔。</p>
  */
 @Service
+@RequiredArgsConstructor
 public class ExperienceService {
 
     public static final int MAX_LEVEL = 9;
@@ -36,15 +38,6 @@ public class ExperienceService {
     private final ReaderUserStatsMapper statsMapper;
     private final ReaderReadingStatMapper readingMapper;
     private final BookRepository bookRepository;
-
-    public ExperienceService(
-            ReaderUserStatsMapper statsMapper,
-            ReaderReadingStatMapper readingMapper,
-            BookRepository bookRepository) {
-        this.statsMapper = statsMapper;
-        this.readingMapper = readingMapper;
-        this.bookRepository = bookRepository;
-    }
 
     /** 等级 9→0，0 最高。满级后继续返回 0。 */
     public static int levelOf(long experience) {
