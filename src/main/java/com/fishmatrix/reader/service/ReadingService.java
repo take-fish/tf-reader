@@ -28,20 +28,20 @@ public class ReadingService {
 
     public Optional<ReadingProgress> getProgress(CurrentUser viewer, long bookId) {
         libraryService.requireReadable(bookId, viewer);
-        return readingRepository.findProgress(viewer.userId(), bookId);
+        return readingRepository.findProgress(viewer.id(), bookId);
     }
 
     public void saveProgress(CurrentUser viewer, long bookId, int chapterIndex,
             double scrollRatio) {
         BookRecord book = libraryService.requireReadable(bookId, viewer);
         Validation.requireChapterIndex(chapterIndex, book.chapterCount());
-        readingRepository.upsertProgress(viewer.userId(), bookId, chapterIndex,
+        readingRepository.upsertProgress(viewer.id(), bookId, chapterIndex,
                 Validation.clampRatio(scrollRatio), Instant.now());
     }
 
     public List<Bookmark> listBookmarks(CurrentUser viewer, long bookId) {
         libraryService.requireReadable(bookId, viewer);
-        return readingRepository.findBookmarks(viewer.userId(), bookId);
+        return readingRepository.findBookmarks(viewer.id(), bookId);
     }
 
     public Bookmark addBookmark(long bookId, BookmarkRequest request, CurrentUser viewer) {
@@ -55,7 +55,7 @@ public class ReadingService {
         }
         String excerpt = Validation.text(request.excerpt(), 512, "摘录", false);
         String note = Validation.text(request.note(), 500, "批注", false);
-        String userId = viewer.userId();
+        long userId = viewer.id();
 
         Optional<Bookmark> existing = readingRepository.findBookmark(
                 userId, bookId, request.chapterIndex(), request.paragraphIndex());
@@ -73,7 +73,7 @@ public class ReadingService {
     }
 
     public void deleteBookmark(long bookmarkId, CurrentUser viewer) {
-        if (!readingRepository.deleteBookmark(bookmarkId, viewer.userId())) {
+        if (!readingRepository.deleteBookmark(bookmarkId, viewer.id())) {
             throw new NotFoundException("书签不存在");
         }
     }

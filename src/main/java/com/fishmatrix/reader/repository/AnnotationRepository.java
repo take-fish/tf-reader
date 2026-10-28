@@ -46,7 +46,7 @@ public class AnnotationRepository {
             long bookId,
             int chapterIndex,
             int paragraphIndex,
-            String userId,
+            long userId,
             String nickname,
             String content,
             Instant now) {
@@ -62,7 +62,8 @@ public class AnnotationRepository {
         return new Annotation(
                 key.longValue(),
                 paragraphIndex,
-                userId,
+                // 对外 DTO 的 userId 仍是字符串；数据库已统一成 BIGINT，这里转成数字字符串
+                String.valueOf(userId),
                 nickname,
                 content,
                 now);

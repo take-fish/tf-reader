@@ -25,7 +25,7 @@ public class ReadingRepository {
                 .usingGeneratedKeyColumns("id");
     }
 
-    public Optional<ReadingProgress> findProgress(String userId, long bookId) {
+    public Optional<ReadingProgress> findProgress(long userId, long bookId) {
         List<ReadingProgress> rows = jdbc.query(
                 "SELECT chapter_index, scroll_ratio, updated_at FROM reader_progress "
                         + "WHERE user_id = ? AND book_id = ?",
@@ -39,7 +39,7 @@ public class ReadingRepository {
     }
 
     public void upsertProgress(
-            String userId,
+            long userId,
             long bookId,
             int chapterIndex,
             double scrollRatio,
@@ -60,7 +60,7 @@ public class ReadingRepository {
                 timestamp);
     }
 
-    public List<Bookmark> findBookmarks(String userId, long bookId) {
+    public List<Bookmark> findBookmarks(long userId, long bookId) {
         return jdbc.query(
                 "SELECT id, chapter_index, paragraph_index, excerpt, note, created_at "
                         + "FROM reader_bookmark WHERE user_id = ? AND book_id = ? "
@@ -77,7 +77,7 @@ public class ReadingRepository {
     }
 
     public Optional<Bookmark> findBookmark(
-            String userId,
+            long userId,
             long bookId,
             int chapterIndex,
             int paragraphIndex) {
@@ -99,7 +99,7 @@ public class ReadingRepository {
         return rows.stream().findFirst();
     }
 
-    public Optional<Bookmark> findBookmarkById(long bookmarkId, String userId) {
+    public Optional<Bookmark> findBookmarkById(long bookmarkId, long userId) {
         List<Bookmark> rows = jdbc.query(
                 "SELECT id, chapter_index, paragraph_index, excerpt, note, created_at "
                         + "FROM reader_bookmark WHERE id = ? AND user_id = ?",
@@ -116,7 +116,7 @@ public class ReadingRepository {
     }
 
     public Bookmark insertBookmark(
-            String userId,
+            long userId,
             long bookId,
             int chapterIndex,
             int paragraphIndex,
@@ -141,7 +141,7 @@ public class ReadingRepository {
                 now);
     }
 
-    public boolean deleteBookmark(long bookmarkId, String userId) {
+    public boolean deleteBookmark(long bookmarkId, long userId) {
         return jdbc.update(
                 "DELETE FROM reader_bookmark WHERE id = ? AND user_id = ?",
                 bookmarkId,

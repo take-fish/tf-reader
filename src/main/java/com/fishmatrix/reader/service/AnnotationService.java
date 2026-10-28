@@ -58,7 +58,7 @@ public class AnnotationService {
                 bookId,
                 chapterIndex,
                 request.paragraphIndex(),
-                viewer.userId(),
+                viewer.id(),
                 Validation.truncate(viewer.nickname(), 32),
                 content,
                 Instant.now());
