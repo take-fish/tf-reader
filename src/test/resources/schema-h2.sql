@@ -155,3 +155,23 @@ CREATE TABLE IF NOT EXISTS reader_reading_stat (
 
 CREATE INDEX IF NOT EXISTS idx_reader_reading_stat_book
     ON reader_reading_stat (book_id);
+
+-- V5: 乐观锁与外键（与 db/migration/V5__optimistic_lock_and_fk.sql 保持一致）
+ALTER TABLE reader_book ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 0;
+ALTER TABLE reader_shelf ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 0;
+ALTER TABLE reader_access_request ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 0;
+
+ALTER TABLE reader_book ADD CONSTRAINT IF NOT EXISTS fk_reader_book_category
+    FOREIGN KEY (category_id) REFERENCES reader_category (id) ON DELETE SET NULL;
+ALTER TABLE reader_chapter ADD CONSTRAINT IF NOT EXISTS fk_reader_chapter_book
+    FOREIGN KEY (book_id) REFERENCES reader_book (id) ON DELETE CASCADE;
+ALTER TABLE reader_progress ADD CONSTRAINT IF NOT EXISTS fk_reader_progress_book
+    FOREIGN KEY (book_id) REFERENCES reader_book (id) ON DELETE CASCADE;
+ALTER TABLE reader_bookmark ADD CONSTRAINT IF NOT EXISTS fk_reader_bookmark_book
+    FOREIGN KEY (book_id) REFERENCES reader_book (id) ON DELETE CASCADE;
+ALTER TABLE reader_annotation ADD CONSTRAINT IF NOT EXISTS fk_reader_annotation_book
+    FOREIGN KEY (book_id) REFERENCES reader_book (id) ON DELETE CASCADE;
+ALTER TABLE reader_access_request ADD CONSTRAINT IF NOT EXISTS fk_reader_access_request_book
+    FOREIGN KEY (book_id) REFERENCES reader_book (id) ON DELETE CASCADE;
+ALTER TABLE reader_shelf_book ADD CONSTRAINT IF NOT EXISTS fk_reader_shelf_book_book
+    FOREIGN KEY (book_id) REFERENCES reader_book (id) ON DELETE CASCADE;

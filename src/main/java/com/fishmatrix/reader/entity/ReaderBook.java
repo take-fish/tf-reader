@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.fishmatrix.reader.domain.BookScope;
 import com.fishmatrix.reader.domain.BookStatus;
 import java.time.Instant;
@@ -37,6 +38,10 @@ public class ReaderBook {
 
     @TableField(value = "updated_at", fill = FieldFill.INSERT_UPDATE)
     private Instant updatedAt;
+
+    /** 乐观锁：并发编辑时由 MyBatis-Plus 校验版本，冲突则更新 0 行。 */
+    @Version
+    private Integer version;
 
     /** 非表字段：JOIN reader_category 得到，由 XML 填充。 */
     @TableField(exist = false)
