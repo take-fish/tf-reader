@@ -8,6 +8,7 @@ import com.fishmatrix.reader.model.ShelfList;
 import com.fishmatrix.reader.model.ShelfRequest;
 import com.fishmatrix.reader.service.ShelfService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,13 +23,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/reader")
 @RequirePermission("reader.private.manage")
+@RequiredArgsConstructor
 public class ShelfController {
 
     private final ShelfService shelfService;
-
-    public ShelfController(ShelfService shelfService) {
-        this.shelfService = shelfService;
-    }
 
     @GetMapping("/shelves")
     public ShelfList list() {

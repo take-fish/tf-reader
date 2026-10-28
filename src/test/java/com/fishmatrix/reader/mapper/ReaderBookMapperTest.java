@@ -94,8 +94,7 @@ class ReaderBookMapperTest {
         var result = bookMapper.selectPublicPage(new Page<>(1, 10), classicsId, null);
 
         assertThat(result.getTotal()).isEqualTo(2);
-        assertThat(result.getRecords()).extracting(ReaderBook::getTitle)
-                .containsExactlyInAnyOrder("古文观止", "世说新语");
+        assertThat(result.getRecords()).extracting(ReaderBook::getTitle).containsExactlyInAnyOrder("古文观止", "世说新语");
     }
 
     @Test
@@ -103,15 +102,15 @@ class ReaderBookMapperTest {
     void keywordMatchesAuthor() {
         var result = bookMapper.selectPublicPage(new Page<>(1, 10), null, "刘义庆");
 
-        assertThat(result.getRecords()).extracting(ReaderBook::getTitle)
-                .containsExactly("世说新语");
+        assertThat(result.getRecords()).extracting(ReaderBook::getTitle).containsExactly("世说新语");
     }
 
     @Test
     @DisplayName("关键字可命中标题，无匹配时返回空页")
     void keywordMatchesTitleAndNoMatch() {
-        assertThat(bookMapper.selectPublicPage(new Page<>(1, 10), null, "观止")
-                .getRecords()).extracting(ReaderBook::getTitle).containsExactly("古文观止");
+        assertThat(bookMapper.selectPublicPage(new Page<>(1, 10), null, "观止").getRecords())
+                .extracting(ReaderBook::getTitle)
+                .containsExactly("古文观止");
 
         var none = bookMapper.selectPublicPage(new Page<>(1, 10), null, "不存在的书");
         assertThat(none.getRecords()).isEmpty();

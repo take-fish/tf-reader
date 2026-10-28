@@ -12,6 +12,7 @@ import com.fishmatrix.reader.model.ShareLink;
 import com.fishmatrix.reader.service.LibraryService;
 import jakarta.validation.Valid;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -28,13 +29,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/reader")
+@RequiredArgsConstructor
 public class BookController {
 
     private final LibraryService libraryService;
-
-    public BookController(LibraryService libraryService) {
-        this.libraryService = libraryService;
-    }
 
     @GetMapping("/books")
     public BookPage books(
@@ -84,13 +82,11 @@ public class BookController {
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String author,
             @RequestParam(required = false) Long categoryId) {
-        return libraryService.importBook(scope, title, author, categoryId, file,
-                UserContext.require());
+        return libraryService.importBook(scope, title, author, categoryId, file, UserContext.require());
     }
 
     @PatchMapping("/books/{bookId}")
-    public BookSummary updateBook(@PathVariable long bookId,
-            @Valid @RequestBody BookUpdateRequest request) {
+    public BookSummary updateBook(@PathVariable long bookId, @Valid @RequestBody BookUpdateRequest request) {
         return libraryService.update(bookId, request, UserContext.require());
     }
 

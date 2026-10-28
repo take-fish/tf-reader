@@ -12,7 +12,8 @@ class DependencyPresenceTest {
     void requiredLibrariesOnClasspath() {
         assertThat(loadable("com.baomidou.mybatisplus.core.mapper.BaseMapper")).isTrue();
         assertThat(loadable("com.baomidou.mybatisplus.annotation.TableName")).isTrue();
-        assertThat(loadable("com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor")).isTrue();
+        assertThat(loadable("com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor"))
+                .isTrue();
         assertThat(loadable("lombok.Data")).isTrue();
         assertThat(loadable("org.mapstruct.Mapper")).isTrue();
     }

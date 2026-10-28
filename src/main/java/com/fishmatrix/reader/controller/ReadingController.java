@@ -9,6 +9,7 @@ import com.fishmatrix.reader.model.ProgressRequest;
 import com.fishmatrix.reader.model.ProgressResponse;
 import com.fishmatrix.reader.service.ReadingService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,13 +23,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/reader")
+@RequiredArgsConstructor
 public class ReadingController {
 
     private final ReadingService readingService;
-
-    public ReadingController(ReadingService readingService) {
-        this.readingService = readingService;
-    }
 
     @GetMapping("/books/{bookId}/progress")
     public ProgressResponse progress(@PathVariable long bookId) {
@@ -38,17 +36,11 @@ public class ReadingController {
 
     @PutMapping("/books/{bookId}/progress")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void saveProgress(
-            @PathVariable long bookId,
-            @Valid @RequestBody ProgressRequest request) {
+    public void saveProgress(@PathVariable long bookId, @Valid @RequestBody ProgressRequest request) {
         if (request == null) {
             throw ApiException.badRequest("请求体不能为空");
         }
-        readingService.saveProgress(
-                UserContext.require(),
-                bookId,
-                request.chapterIndex(),
-                request.scrollRatio());
+        readingService.saveProgress(UserContext.require(), bookId, request.chapterIndex(), request.scrollRatio());
     }
 
     @GetMapping("/books/{bookId}/bookmarks")
@@ -58,9 +50,7 @@ public class ReadingController {
 
     @PostMapping("/books/{bookId}/bookmarks")
     @ResponseStatus(HttpStatus.CREATED)
-    public Bookmark addBookmark(
-            @PathVariable long bookId,
-            @Valid @RequestBody BookmarkRequest request) {
+    public Bookmark addBookmark(@PathVariable long bookId, @Valid @RequestBody BookmarkRequest request) {
         return readingService.addBookmark(bookId, request, UserContext.require());
     }
 

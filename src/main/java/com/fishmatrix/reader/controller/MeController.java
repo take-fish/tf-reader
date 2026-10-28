@@ -7,6 +7,7 @@ import com.fishmatrix.reader.model.UserStats;
 import com.fishmatrix.reader.service.ExperienceService;
 import com.fishmatrix.reader.service.LibraryService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,15 +17,11 @@ import org.springframework.web.bind.annotation.RestController;
 /** 当前登录用户的个人数据（经验值、等级、阅读统计）。 */
 @RestController
 @RequestMapping("/api/v1/reader")
+@RequiredArgsConstructor
 public class MeController {
 
     private final ExperienceService experienceService;
     private final LibraryService libraryService;
-
-    public MeController(ExperienceService experienceService, LibraryService libraryService) {
-        this.experienceService = experienceService;
-        this.libraryService = libraryService;
-    }
 
     @GetMapping("/me/stats")
     public UserStats stats() {

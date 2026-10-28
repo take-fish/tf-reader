@@ -27,7 +27,9 @@ spring:
   datasource:
     # 默认值刻意指向本机：漏配环境变量时连不上并报错，而不是静默连到生产库。
     # 生产/测试栈由 compose 注入 MYSQL_HOST/PORT/DB（见 reader配置/*/.env），不依赖这里的默认值。
-    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/${MYSQL_DB:fm_reader}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    # rewriteBatchedStatements=true：让 MySQL 驱动把批量 INSERT 合并成多值语句，
+    # 否则 batchUpdate 只是省了往返次数，服务端仍逐条执行，导入上千章时差别很明显。
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/${MYSQL_DB:fm_reader}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
     username: ${MYSQL_APP_USER:fm_reader_app}
     password: ${MYSQL_APP_PASSWORD:}
   data:

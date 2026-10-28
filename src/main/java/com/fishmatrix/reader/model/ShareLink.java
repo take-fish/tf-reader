@@ -1,4 +1,3 @@
 package com.fishmatrix.reader.model;
 
-public record ShareLink(String shareToken) {
-}
+public record ShareLink(String shareToken) {}

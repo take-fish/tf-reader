@@ -14,9 +14,7 @@ public class ChapterParser {
      * 章节标题单独成行，且不含句号/问号/分号等正文标点，避免把「第二章内容。」误判为标题。
      */
     private static final Pattern CHAPTER_TITLE = Pattern.compile(
-            "^\\s*(第[0-9０-９一二三四五六七八九十百千万零〇两]+[章回节卷]"
-                    + "[^\\n。！？；，,!?;]{0,60})\\s*$",
-            Pattern.MULTILINE);
+            "^\\s*(第[0-9０-９一二三四五六七八九十百千万零〇两]+[章回节卷]" + "[^\\n。！？；，,!?;]{0,60})\\s*$", Pattern.MULTILINE);
 
     public List<ParsedChapter> parse(String raw) {
         String text = Texts.normalize(raw);
@@ -55,9 +53,7 @@ public class ChapterParser {
         return new ParsedChapter(title, normalized, Texts.wordCount(normalized));
     }
 
-    private record ChapterMark(String title, int start, int end) {
-    }
+    private record ChapterMark(String title, int start, int end) {}
 
-    public record ParsedChapter(String title, String content, int wordCount) {
-    }
+    public record ParsedChapter(String title, String content, int wordCount) {}
 }

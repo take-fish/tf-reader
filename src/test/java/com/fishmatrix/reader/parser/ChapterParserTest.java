@@ -16,7 +16,8 @@ class ChapterParserTest {
         List<ChapterParser.ParsedChapter> chapters = parser.parse(text);
 
         assertThat(chapters).hasSize(3);
-        assertThat(chapters).extracting(ChapterParser.ParsedChapter::title)
+        assertThat(chapters)
+                .extracting(ChapterParser.ParsedChapter::title)
                 .containsExactly("第一章 起始", "第二章 推进", "第3章 收束");
         assertThat(chapters.get(1).content()).isEqualTo("第二章内容。");
     }

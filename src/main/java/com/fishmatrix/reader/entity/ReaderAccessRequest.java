@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.fishmatrix.reader.domain.AccessRequestStatus;
 import java.time.Instant;
 import lombok.Data;
@@ -30,4 +31,8 @@ public class ReaderAccessRequest {
 
     @TableField(value = "updated_at", fill = FieldFill.INSERT_UPDATE)
     private Instant updatedAt;
+
+    /** 乐观锁：审批与撤销并发时，先到的生效，后到的更新 0 行。 */
+    @Version
+    private Integer version;
 }

@@ -13,12 +13,9 @@ class MapperLocationTest {
     @Test
     @DisplayName("application.yml 里配置的 classpath:mapper/*.xml 能解析到 XML")
     void configuredPatternResolvesXml() throws IOException {
-        Resource[] resources = new PathMatchingResourcePatternResolver()
-                .getResources("classpath:mapper/*.xml");
+        Resource[] resources = new PathMatchingResourcePatternResolver().getResources("classpath:mapper/*.xml");
 
         assertThat(resources).isNotEmpty();
-        assertThat(resources)
-                .extracting(Resource::getFilename)
-                .contains("ReaderBookMapper.xml");
+        assertThat(resources).extracting(Resource::getFilename).contains("ReaderBookMapper.xml");
     }
 }

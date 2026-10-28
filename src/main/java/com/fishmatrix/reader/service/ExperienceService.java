@@ -1,15 +1,16 @@
 package com.fishmatrix.reader.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.fishmatrix.reader.entity.ReaderBook;
 import com.fishmatrix.reader.entity.ReaderReadingStat;
 import com.fishmatrix.reader.entity.ReaderUserStats;
+import com.fishmatrix.reader.mapper.ReaderBookMapper;
 import com.fishmatrix.reader.mapper.ReaderReadingStatMapper;
 import com.fishmatrix.reader.mapper.ReaderUserStatsMapper;
 import com.fishmatrix.reader.model.UserStats;
-import com.fishmatrix.reader.repository.BookRepository;
-import com.fishmatrix.reader.repository.BookRepository.BookRecord;
 import java.time.Duration;
 import java.time.Instant;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,28 +24,21 @@ import org.springframework.transaction.annotation.Transactional;
  * 且单次间隔封顶 5 分钟，避免挂机或伪造超长间隔。</p>
  */
 @Service
+@RequiredArgsConstructor
 public class ExperienceService {
 
     public static final int MAX_LEVEL = 9;
     public static final int EXP_PER_LEVEL = 10;
     /** 上传经验一辈子累计的上限。 */
     public static final int UPLOAD_EXP_CAP = 20;
+
     public static final int MINUTES_PER_READING_EXP = 20;
     public static final int OWNER_REWARD_MINUTES = 60;
     public static final int MAX_HEARTBEAT_GAP_MINUTES = 5;
 
     private final ReaderUserStatsMapper statsMapper;
     private final ReaderReadingStatMapper readingMapper;
-    private final BookRepository bookRepository;
-
-    public ExperienceService(
-            ReaderUserStatsMapper statsMapper,
-            ReaderReadingStatMapper readingMapper,
-            BookRepository bookRepository) {
-        this.statsMapper = statsMapper;
-        this.readingMapper = readingMapper;
-        this.bookRepository = bookRepository;
-    }
+    private final ReaderBookMapper bookMapper;
 
     /** 等级 9→0，0 最高。满级后继续返回 0。 */
     public static int levelOf(long experience) {
@@ -90,8 +84,7 @@ public class ExperienceService {
         }
         int newMinutes = oldMinutes + addedMinutes;
 
-        int readingGain = newMinutes / MINUTES_PER_READING_EXP
-                - oldMinutes / MINUTES_PER_READING_EXP;
+        int readingGain = newMinutes / MINUTES_PER_READING_EXP - oldMinutes / MINUTES_PER_READING_EXP;
 
         int rewardedBefore = stat == null ? 0 : stat.getRewardedHours();
         int rewardedAfter = newMinutes / OWNER_REWARD_MINUTES;
@@ -109,9 +102,11 @@ public class ExperienceService {
             stat.setMinutes(newMinutes);
             stat.setRewardedHours(rewardedAfter);
             stat.setLastHeartbeatAt(now);
-            readingMapper.update(stat, Wrappers.<ReaderReadingStat>lambdaUpdate()
-                    .eq(ReaderReadingStat::getUserId, userId)
-                    .eq(ReaderReadingStat::getBookId, bookId));
+            readingMapper.update(
+                    stat,
+                    Wrappers.<ReaderReadingStat>lambdaUpdate()
+                            .eq(ReaderReadingStat::getUserId, userId)
+                            .eq(ReaderReadingStat::getBookId, bookId));
         }
 
         ReaderUserStats stats = getOrCreate(userId);
@@ -122,9 +117,9 @@ public class ExperienceService {
 
         // 别人在读我的书：每满 1 小时给书主 1 点；自己读自己的书不结算。
         if (ownerGain > 0) {
-            BookRecord book = bookRepository.findById(bookId).orElse(null);
-            if (book != null && book.ownerId() != null && !book.ownerId().equals(userId)) {
-                addExperience(book.ownerId(), ownerGain);
+            ReaderBook book = bookMapper.selectByIdWithCategory(bookId);
+            if (book != null && book.getOwnerId() != null && !book.getOwnerId().equals(userId)) {
+                addExperience(book.getOwnerId(), ownerGain);
             }
         }
         return toView(stats);
@@ -164,10 +159,6 @@ public class ExperienceService {
         int level = levelOf(stats.getExperience());
         Integer nextLevelExperience = level == 0 ? null : experienceForLevel(level - 1);
         return new UserStats(
-                stats.getExperience(),
-                level,
-                nextLevelExperience,
-                stats.getUploadCount(),
-                stats.getReadingMinutes());
+                stats.getExperience(), level, nextLevelExperience, stats.getUploadCount(), stats.getReadingMinutes());
     }
 }
