@@ -16,7 +16,8 @@ public interface ReaderProgressMapper extends BaseMapper<ReaderProgress> {
      * 进度是复合主键 (user_id, book_id)，MyBatis-Plus 的 saveOrUpdate 依赖单主键，用不了；
      * 这里直接用 MySQL 的 ON DUPLICATE KEY UPDATE，保证"有则更新、无则插入"是一次原子操作。
      */
-    @Insert("""
+    @Insert(
+            """
             INSERT INTO reader_progress (user_id, book_id, chapter_index, scroll_ratio, updated_at)
             VALUES (#{userId}, #{bookId}, #{chapterIndex}, #{scrollRatio}, #{updatedAt})
             ON DUPLICATE KEY UPDATE chapter_index = #{chapterIndex},

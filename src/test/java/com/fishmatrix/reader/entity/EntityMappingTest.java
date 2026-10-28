@@ -40,9 +40,13 @@ class EntityMappingTest {
 
         for (Class<?> type : EXPECTED.keySet()) {
             if (type == ReaderProgress.class || type == ReaderShelfBook.class) {
-                assertThat(hasAnnotatedId(type)).as("%s 是复合主键，不应有 @TableId", type.getSimpleName()).isFalse();
+                assertThat(hasAnnotatedId(type))
+                        .as("%s 是复合主键，不应有 @TableId", type.getSimpleName())
+                        .isFalse();
             } else {
-                assertThat(hasAnnotatedId(type)).as("%s 缺少 @TableId", type.getSimpleName()).isTrue();
+                assertThat(hasAnnotatedId(type))
+                        .as("%s 缺少 @TableId", type.getSimpleName())
+                        .isTrue();
             }
         }
     }
@@ -65,9 +69,10 @@ class EntityMappingTest {
             }
             Field idField = type.getDeclaredField("id");
             TableId tableId = idField.getAnnotation(TableId.class);
-            assertThat(tableId).as("%s 的 @TableId 应落在 id 字段", type.getSimpleName()).isNotNull();
-            assertThat(tableId.type()).as("%s 的主键应为 AUTO", type.getSimpleName())
-                    .isEqualTo(IdType.AUTO);
+            assertThat(tableId)
+                    .as("%s 的 @TableId 应落在 id 字段", type.getSimpleName())
+                    .isNotNull();
+            assertThat(tableId.type()).as("%s 的主键应为 AUTO", type.getSimpleName()).isEqualTo(IdType.AUTO);
         }
     }
 
@@ -81,14 +86,15 @@ class EntityMappingTest {
                     continue;
                 }
                 total++;
-                assertThat(field.getType()).as("%s.%s 必须是 Instant",
-                                type.getSimpleName(), field.getName())
+                assertThat(field.getType())
+                        .as("%s.%s 必须是 Instant", type.getSimpleName(), field.getName())
                         .isEqualTo(Instant.class);
                 TableField tableField = field.getAnnotation(TableField.class);
-                assertThat(tableField).as("%s.%s 缺少 @TableField",
-                                type.getSimpleName(), field.getName()).isNotNull();
-                assertThat(tableField.fill()).as("%s.%s 的 fill 不能是 DEFAULT",
-                                type.getSimpleName(), field.getName())
+                assertThat(tableField)
+                        .as("%s.%s 缺少 @TableField", type.getSimpleName(), field.getName())
+                        .isNotNull();
+                assertThat(tableField.fill())
+                        .as("%s.%s 的 fill 不能是 DEFAULT", type.getSimpleName(), field.getName())
                         .isNotEqualTo(FieldFill.DEFAULT);
             }
         }

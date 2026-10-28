@@ -29,6 +29,7 @@ public class ExperienceService {
     public static final int EXP_PER_LEVEL = 10;
     /** 上传经验一辈子累计的上限。 */
     public static final int UPLOAD_EXP_CAP = 20;
+
     public static final int MINUTES_PER_READING_EXP = 20;
     public static final int OWNER_REWARD_MINUTES = 60;
     public static final int MAX_HEARTBEAT_GAP_MINUTES = 5;
@@ -38,9 +39,7 @@ public class ExperienceService {
     private final ReaderBookMapper bookMapper;
 
     public ExperienceService(
-            ReaderUserStatsMapper statsMapper,
-            ReaderReadingStatMapper readingMapper,
-            ReaderBookMapper bookMapper) {
+            ReaderUserStatsMapper statsMapper, ReaderReadingStatMapper readingMapper, ReaderBookMapper bookMapper) {
         this.statsMapper = statsMapper;
         this.readingMapper = readingMapper;
         this.bookMapper = bookMapper;
@@ -90,8 +89,7 @@ public class ExperienceService {
         }
         int newMinutes = oldMinutes + addedMinutes;
 
-        int readingGain = newMinutes / MINUTES_PER_READING_EXP
-                - oldMinutes / MINUTES_PER_READING_EXP;
+        int readingGain = newMinutes / MINUTES_PER_READING_EXP - oldMinutes / MINUTES_PER_READING_EXP;
 
         int rewardedBefore = stat == null ? 0 : stat.getRewardedHours();
         int rewardedAfter = newMinutes / OWNER_REWARD_MINUTES;
@@ -109,9 +107,11 @@ public class ExperienceService {
             stat.setMinutes(newMinutes);
             stat.setRewardedHours(rewardedAfter);
             stat.setLastHeartbeatAt(now);
-            readingMapper.update(stat, Wrappers.<ReaderReadingStat>lambdaUpdate()
-                    .eq(ReaderReadingStat::getUserId, userId)
-                    .eq(ReaderReadingStat::getBookId, bookId));
+            readingMapper.update(
+                    stat,
+                    Wrappers.<ReaderReadingStat>lambdaUpdate()
+                            .eq(ReaderReadingStat::getUserId, userId)
+                            .eq(ReaderReadingStat::getBookId, bookId));
         }
 
         ReaderUserStats stats = getOrCreate(userId);
@@ -164,10 +164,6 @@ public class ExperienceService {
         int level = levelOf(stats.getExperience());
         Integer nextLevelExperience = level == 0 ? null : experienceForLevel(level - 1);
         return new UserStats(
-                stats.getExperience(),
-                level,
-                nextLevelExperience,
-                stats.getUploadCount(),
-                stats.getReadingMinutes());
+                stats.getExperience(), level, nextLevelExperience, stats.getUploadCount(), stats.getReadingMinutes());
     }
 }

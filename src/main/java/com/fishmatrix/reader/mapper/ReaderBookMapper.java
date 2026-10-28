@@ -21,9 +21,7 @@ public interface ReaderBookMapper extends BaseMapper<ReaderBook> {
      * <p><b>size 上限</b>：100 的上限由 {@code LibraryService} 钳制，本方法与分页拦截器都不设 maxLimit。</p>
      */
     IPage<ReaderBook> selectPublicPage(
-            Page<ReaderBook> page,
-            @Param("categoryId") Long categoryId,
-            @Param("keyword") String keyword);
+            Page<ReaderBook> page, @Param("categoryId") Long categoryId, @Param("keyword") String keyword);
 
     long countPublic(@Param("categoryId") Long categoryId, @Param("keyword") String keyword);
 

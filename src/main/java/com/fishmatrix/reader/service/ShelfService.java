@@ -63,8 +63,8 @@ public class ShelfService {
             return List.of();
         }
         // 一次查出这些书单下的所有关联行再本地计数，避免每个书单查一次
-        Map<Long, Integer> counts = bookCounts(
-                shelves.stream().map(ReaderShelf::getId).toList());
+        Map<Long, Integer> counts =
+                bookCounts(shelves.stream().map(ReaderShelf::getId).toList());
         return shelves.stream()
                 .map(entity -> toView(entity, counts.getOrDefault(entity.getId(), 0)))
                 .toList();
@@ -77,14 +77,16 @@ public class ShelfService {
                         .eq(ReaderShelfBook::getShelfId, shelfId)
                         .orderByDesc(ReaderShelfBook::getAddedAt)
                         .orderByAsc(ReaderShelfBook::getBookId))
-                .stream().map(ReaderShelfBook::getBookId).toList();
+                .stream()
+                .map(ReaderShelfBook::getBookId)
+                .toList();
         Shelf shelf = toView(entity, bookIds.size());
         if (bookIds.isEmpty()) {
             return new ShelfDetail(shelf, List.of());
         }
         // 固定 4 次查询：书单、书籍 id 列表、书籍本体、已获授权的书籍集合。
-        Map<Long, ReaderBook> byId = bookMapper.selectByIds(bookIds).stream()
-                .collect(Collectors.toMap(ReaderBook::getId, book -> book));
+        Map<Long, ReaderBook> byId =
+                bookMapper.selectByIds(bookIds).stream().collect(Collectors.toMap(ReaderBook::getId, book -> book));
         Set<Long> approvedBookIds = approvedBookIds(viewer.id(), bookIds);
         List<BookSummary> books = bookIds.stream()
                 // 保持书架里的加入顺序（最近加入在前），并跳过已被删除的书。
@@ -128,8 +130,7 @@ public class ShelfService {
     @Transactional
     public void delete(long shelfId, CurrentUser viewer) {
         requireOwned(shelfId, viewer);
-        shelfBookMapper.delete(Wrappers.<ReaderShelfBook>lambdaQuery()
-                .eq(ReaderShelfBook::getShelfId, shelfId));
+        shelfBookMapper.delete(Wrappers.<ReaderShelfBook>lambdaQuery().eq(ReaderShelfBook::getShelfId, shelfId));
         shelfMapper.deleteById(shelfId);
     }
 
@@ -169,11 +170,14 @@ public class ShelfService {
     }
 
     private Set<Long> approvedBookIds(long viewerId, List<Long> bookIds) {
-        return accessMapper.selectList(Wrappers.<ReaderAccessRequest>lambdaQuery()
+        return accessMapper
+                .selectList(Wrappers.<ReaderAccessRequest>lambdaQuery()
                         .eq(ReaderAccessRequest::getRequesterId, viewerId)
                         .eq(ReaderAccessRequest::getStatus, AccessRequestStatus.APPROVED)
                         .in(ReaderAccessRequest::getBookId, bookIds))
-                .stream().map(ReaderAccessRequest::getBookId).collect(Collectors.toSet());
+                .stream()
+                .map(ReaderAccessRequest::getBookId)
+                .collect(Collectors.toSet());
     }
 
     private Map<Long, Integer> bookCounts(List<Long> shelfIds) {
@@ -187,7 +191,6 @@ public class ShelfService {
     }
 
     private static Shelf toView(ReaderShelf entity, int bookCount) {
-        return new Shelf(entity.getId(), entity.getName(), entity.getDescription(),
-                bookCount, entity.getUpdatedAt());
+        return new Shelf(entity.getId(), entity.getName(), entity.getDescription(), bookCount, entity.getUpdatedAt());
     }
 }

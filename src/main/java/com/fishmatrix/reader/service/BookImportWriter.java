@@ -25,9 +25,7 @@ public class BookImportWriter {
     private final ExperienceService experienceService;
 
     public BookImportWriter(
-            ReaderBookMapper bookMapper,
-            ReaderChapterMapper chapterMapper,
-            ExperienceService experienceService) {
+            ReaderBookMapper bookMapper, ReaderChapterMapper chapterMapper, ExperienceService experienceService) {
         this.bookMapper = bookMapper;
         this.chapterMapper = chapterMapper;
         this.experienceService = experienceService;
@@ -73,6 +71,5 @@ public class BookImportWriter {
             String storageKey,
             long fileSize,
             String sha256,
-            List<ChapterRow> chapters) {
-    }
+            List<ChapterRow> chapters) {}
 }

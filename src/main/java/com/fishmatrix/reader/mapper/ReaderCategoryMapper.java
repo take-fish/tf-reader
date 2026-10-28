@@ -5,5 +5,4 @@ import com.fishmatrix.reader.entity.ReaderCategory;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface ReaderCategoryMapper extends BaseMapper<ReaderCategory> {
-}
+public interface ReaderCategoryMapper extends BaseMapper<ReaderCategory> {}

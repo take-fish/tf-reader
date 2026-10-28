@@ -5,5 +5,4 @@ import com.fishmatrix.reader.entity.ReaderBookmark;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface ReaderBookmarkMapper extends BaseMapper<ReaderBookmark> {
-}
+public interface ReaderBookmarkMapper extends BaseMapper<ReaderBookmark> {}

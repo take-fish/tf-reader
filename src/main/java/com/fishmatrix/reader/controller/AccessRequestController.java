@@ -30,8 +30,7 @@ public class AccessRequestController {
 
     @PostMapping("/books/{bookId}/access-requests")
     @ResponseStatus(HttpStatus.CREATED)
-    public AccessRequestView request(@PathVariable long bookId,
-            @Valid @RequestBody AccessRequestCreate create) {
+    public AccessRequestView request(@PathVariable long bookId, @Valid @RequestBody AccessRequestCreate create) {
         return service.request(bookId, create, UserContext.require());
     }
 
@@ -41,8 +40,7 @@ public class AccessRequestController {
     }
 
     @GetMapping("/access-requests/received")
-    public AccessRequestList received(
-            @RequestParam(required = false) AccessRequestStatus status) {
+    public AccessRequestList received(@RequestParam(required = false) AccessRequestStatus status) {
         return new AccessRequestList(service.received(UserContext.require(), status));
     }
 
@@ -52,10 +50,9 @@ public class AccessRequestController {
     }
 
     @PostMapping("/access-requests/{requestId}/reject")
-    public AccessRequestView reject(@PathVariable long requestId,
-            @RequestBody(required = false) AccessDecisionRequest decision) {
-        return service.reject(requestId, decision == null ? null : decision.message(),
-                UserContext.require());
+    public AccessRequestView reject(
+            @PathVariable long requestId, @RequestBody(required = false) AccessDecisionRequest decision) {
+        return service.reject(requestId, decision == null ? null : decision.message(), UserContext.require());
     }
 
     @PostMapping("/access-requests/{requestId}/revoke")

@@ -27,9 +27,7 @@ public class ReadingService {
     private final ReaderBookmarkMapper bookmarkMapper;
 
     public ReadingService(
-            LibraryService libraryService,
-            ReaderProgressMapper progressMapper,
-            ReaderBookmarkMapper bookmarkMapper) {
+            LibraryService libraryService, ReaderProgressMapper progressMapper, ReaderBookmarkMapper bookmarkMapper) {
         this.libraryService = libraryService;
         this.progressMapper = progressMapper;
         this.bookmarkMapper = bookmarkMapper;
@@ -37,16 +35,16 @@ public class ReadingService {
 
     public Optional<ReadingProgress> getProgress(CurrentUser viewer, long bookId) {
         libraryService.requireReadable(bookId, viewer);
-        return progressMapper.selectList(Wrappers.<ReaderProgress>lambdaQuery()
+        return progressMapper
+                .selectList(Wrappers.<ReaderProgress>lambdaQuery()
                         .eq(ReaderProgress::getUserId, viewer.id())
                         .eq(ReaderProgress::getBookId, bookId))
-                .stream().findFirst()
-                .map(row -> new ReadingProgress(
-                        row.getChapterIndex(), row.getScrollRatio(), row.getUpdatedAt()));
+                .stream()
+                .findFirst()
+                .map(row -> new ReadingProgress(row.getChapterIndex(), row.getScrollRatio(), row.getUpdatedAt()));
     }
 
-    public void saveProgress(CurrentUser viewer, long bookId, int chapterIndex,
-            double scrollRatio) {
+    public void saveProgress(CurrentUser viewer, long bookId, int chapterIndex, double scrollRatio) {
         ReaderBook book = libraryService.requireReadable(bookId, viewer);
         Validation.requireChapterIndex(chapterIndex, book.chapterCountOrZero());
         ReaderProgress progress = new ReaderProgress();
@@ -60,13 +58,16 @@ public class ReadingService {
 
     public List<Bookmark> listBookmarks(CurrentUser viewer, long bookId) {
         libraryService.requireReadable(bookId, viewer);
-        return bookmarkMapper.selectList(Wrappers.<ReaderBookmark>lambdaQuery()
+        return bookmarkMapper
+                .selectList(Wrappers.<ReaderBookmark>lambdaQuery()
                         .eq(ReaderBookmark::getUserId, viewer.id())
                         .eq(ReaderBookmark::getBookId, bookId)
                         .orderByAsc(ReaderBookmark::getChapterIndex)
                         .orderByAsc(ReaderBookmark::getParagraphIndex)
                         .orderByAsc(ReaderBookmark::getId))
-                .stream().map(ReadingService::toView).toList();
+                .stream()
+                .map(ReadingService::toView)
+                .toList();
     }
 
     public Bookmark addBookmark(long bookId, BookmarkRequest request, CurrentUser viewer) {
@@ -81,8 +82,8 @@ public class ReadingService {
         String excerpt = Validation.text(request.excerpt(), 512, "摘录", false);
         String note = Validation.text(request.note(), 500, "批注", false);
 
-        Optional<Bookmark> existing = findBookmark(
-                viewer.id(), bookId, request.chapterIndex(), request.paragraphIndex());
+        Optional<Bookmark> existing =
+                findBookmark(viewer.id(), bookId, request.chapterIndex(), request.paragraphIndex());
         if (existing.isPresent()) {
             return existing.get();
         }
@@ -98,8 +99,7 @@ public class ReadingService {
             bookmarkMapper.insert(entity);
         } catch (DuplicateKeyException exception) {
             // 并发下唯一键兜底：同一位置的书签已经存在，取回已有的
-            return findBookmark(viewer.id(), bookId, request.chapterIndex(),
-                    request.paragraphIndex())
+            return findBookmark(viewer.id(), bookId, request.chapterIndex(), request.paragraphIndex())
                     .orElseThrow(() -> new NotFoundException("书签不存在"));
         }
         return toView(entity);
@@ -114,14 +114,16 @@ public class ReadingService {
         }
     }
 
-    private Optional<Bookmark> findBookmark(long userId, long bookId, int chapterIndex,
-            int paragraphIndex) {
-        return bookmarkMapper.selectList(Wrappers.<ReaderBookmark>lambdaQuery()
+    private Optional<Bookmark> findBookmark(long userId, long bookId, int chapterIndex, int paragraphIndex) {
+        return bookmarkMapper
+                .selectList(Wrappers.<ReaderBookmark>lambdaQuery()
                         .eq(ReaderBookmark::getUserId, userId)
                         .eq(ReaderBookmark::getBookId, bookId)
                         .eq(ReaderBookmark::getChapterIndex, chapterIndex)
                         .eq(ReaderBookmark::getParagraphIndex, paragraphIndex))
-                .stream().findFirst().map(ReadingService::toView);
+                .stream()
+                .findFirst()
+                .map(ReadingService::toView);
     }
 
     private static Bookmark toView(ReaderBookmark entity) {

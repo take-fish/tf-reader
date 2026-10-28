@@ -46,9 +46,7 @@ public class AccessRequestService {
     private final LibraryService libraryService;
 
     public AccessRequestService(
-            ReaderAccessRequestMapper accessMapper,
-            ReaderBookMapper bookMapper,
-            LibraryService libraryService) {
+            ReaderAccessRequestMapper accessMapper, ReaderBookMapper bookMapper, LibraryService libraryService) {
         this.accessMapper = accessMapper;
         this.bookMapper = bookMapper;
         this.libraryService = libraryService;
@@ -65,7 +63,9 @@ public class AccessRequestService {
         if (!libraryService.shareTokenValid(book)) {
             throw ApiException.forbidden("分享链接已失效");
         }
-        if (create == null || create.shareToken() == null || create.shareToken().isBlank()
+        if (create == null
+                || create.shareToken() == null
+                || create.shareToken().isBlank()
                 || !create.shareToken().equals(book.getShareToken())) {
             throw ApiException.forbidden("请通过有效的分享链接发起申请");
         }
@@ -82,9 +82,7 @@ public class AccessRequestService {
                 case REJECTED -> {
                     if (current.getDecidedAt() != null
                             && current.getDecidedAt().plus(REJECT_COOLDOWN).isAfter(now)) {
-                        throw ApiException.tooManyRequests(
-                                ReaderErrorCodes.ACCESS_COOLDOWN,
-                                "申请被拒绝后 24 小时内不能重复申请");
+                        throw ApiException.tooManyRequests(ReaderErrorCodes.ACCESS_COOLDOWN, "申请被拒绝后 24 小时内不能重复申请");
                     }
                 }
                 default -> {
@@ -109,7 +107,8 @@ public class AccessRequestService {
             accessMapper.updateById(entity);
         }
 
-        log.info("发起访问申请",
+        log.info(
+                "发起访问申请",
                 kv("event", "access.requested"),
                 kv("request_id", entity.getId()),
                 kv("book_id", bookId),
@@ -119,21 +118,19 @@ public class AccessRequestService {
     }
 
     public List<AccessRequestView> mine(CurrentUser viewer) {
-        List<ReaderAccessRequest> rows = accessMapper.selectList(
-                Wrappers.<ReaderAccessRequest>lambdaQuery()
-                        .eq(ReaderAccessRequest::getRequesterId, viewer.id())
-                        .orderByDesc(ReaderAccessRequest::getUpdatedAt)
-                        .orderByDesc(ReaderAccessRequest::getId));
+        List<ReaderAccessRequest> rows = accessMapper.selectList(Wrappers.<ReaderAccessRequest>lambdaQuery()
+                .eq(ReaderAccessRequest::getRequesterId, viewer.id())
+                .orderByDesc(ReaderAccessRequest::getUpdatedAt)
+                .orderByDesc(ReaderAccessRequest::getId));
         return toViews(rows);
     }
 
     public List<AccessRequestView> received(CurrentUser viewer, AccessRequestStatus status) {
-        List<ReaderAccessRequest> rows = accessMapper.selectList(
-                Wrappers.<ReaderAccessRequest>lambdaQuery()
-                        .eq(ReaderAccessRequest::getOwnerId, viewer.id())
-                        .eq(status != null, ReaderAccessRequest::getStatus, status)
-                        .orderByDesc(ReaderAccessRequest::getUpdatedAt)
-                        .orderByDesc(ReaderAccessRequest::getId));
+        List<ReaderAccessRequest> rows = accessMapper.selectList(Wrappers.<ReaderAccessRequest>lambdaQuery()
+                .eq(ReaderAccessRequest::getOwnerId, viewer.id())
+                .eq(status != null, ReaderAccessRequest::getStatus, status)
+                .orderByDesc(ReaderAccessRequest::getUpdatedAt)
+                .orderByDesc(ReaderAccessRequest::getId));
         return toViews(rows);
     }
 
@@ -141,7 +138,8 @@ public class AccessRequestService {
     public AccessRequestView approve(long id, CurrentUser viewer) {
         ReaderAccessRequest request = requireOwnerPending(id, viewer);
         decide(request, AccessRequestStatus.APPROVED, "");
-        log.info("通过访问申请",
+        log.info(
+                "通过访问申请",
                 kv("event", "access.approved"),
                 kv("request_id", id),
                 kv("book_id", request.getBookId()),
@@ -153,9 +151,9 @@ public class AccessRequestService {
     @Transactional
     public AccessRequestView reject(long id, String reason, CurrentUser viewer) {
         ReaderAccessRequest request = requireOwnerPending(id, viewer);
-        decide(request, AccessRequestStatus.REJECTED,
-                Validation.text(reason, 255, "拒绝理由", false));
-        log.info("拒绝访问申请",
+        decide(request, AccessRequestStatus.REJECTED, Validation.text(reason, 255, "拒绝理由", false));
+        log.info(
+                "拒绝访问申请",
                 kv("event", "access.rejected"),
                 kv("request_id", id),
                 kv("book_id", request.getBookId()),
@@ -168,11 +166,11 @@ public class AccessRequestService {
     public AccessRequestView revoke(long id, CurrentUser viewer) {
         ReaderAccessRequest request = requireOwnedBy(id, viewer);
         if (!request.getStatus().isApproved()) {
-            throw ApiException.conflict(ReaderErrorCodes.ACCESS_INVALID_STATE,
-                    "只有已通过的申请才能撤销");
+            throw ApiException.conflict(ReaderErrorCodes.ACCESS_INVALID_STATE, "只有已通过的申请才能撤销");
         }
         decide(request, AccessRequestStatus.REVOKED, "");
-        log.info("收回访问授权",
+        log.info(
+                "收回访问授权",
                 kv("event", "access.revoked"),
                 kv("request_id", id),
                 kv("book_id", request.getBookId()),
@@ -188,11 +186,11 @@ public class AccessRequestService {
             throw ApiException.notFound("申请不存在");
         }
         if (!request.getStatus().isPending()) {
-            throw ApiException.conflict(ReaderErrorCodes.ACCESS_INVALID_STATE,
-                    "只有待审批的申请才能取消");
+            throw ApiException.conflict(ReaderErrorCodes.ACCESS_INVALID_STATE, "只有待审批的申请才能取消");
         }
         decide(request, AccessRequestStatus.CANCELLED, "");
-        log.info("取消访问申请",
+        log.info(
+                "取消访问申请",
                 kv("event", "access.cancelled"),
                 kv("request_id", id),
                 kv("book_id", request.getBookId()),
@@ -201,10 +199,12 @@ public class AccessRequestService {
     }
 
     private Optional<ReaderAccessRequest> findByBookAndRequester(long bookId, long requesterId) {
-        return accessMapper.selectList(Wrappers.<ReaderAccessRequest>lambdaQuery()
+        return accessMapper
+                .selectList(Wrappers.<ReaderAccessRequest>lambdaQuery()
                         .eq(ReaderAccessRequest::getBookId, bookId)
                         .eq(ReaderAccessRequest::getRequesterId, requesterId))
-                .stream().findFirst();
+                .stream()
+                .findFirst();
     }
 
     private ReaderAccessRequest require(long id) {
@@ -243,10 +243,10 @@ public class AccessRequestService {
         if (rows.isEmpty()) {
             return List.of();
         }
-        List<Long> bookIds = rows.stream()
-                .map(ReaderAccessRequest::getBookId).distinct().toList();
-        Map<Long, ReaderBook> books = bookMapper.selectByIds(bookIds).stream()
-                .collect(Collectors.toMap(ReaderBook::getId, book -> book));
+        List<Long> bookIds =
+                rows.stream().map(ReaderAccessRequest::getBookId).distinct().toList();
+        Map<Long, ReaderBook> books =
+                bookMapper.selectByIds(bookIds).stream().collect(Collectors.toMap(ReaderBook::getId, book -> book));
         return rows.stream().map(row -> toView(row, books.get(row.getBookId()))).toList();
     }
 

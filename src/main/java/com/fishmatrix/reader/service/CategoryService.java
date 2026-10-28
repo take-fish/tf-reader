@@ -26,10 +26,13 @@ public class CategoryService {
     }
 
     public List<Category> list() {
-        return categoryMapper.selectList(Wrappers.<ReaderCategory>lambdaQuery()
+        return categoryMapper
+                .selectList(Wrappers.<ReaderCategory>lambdaQuery()
                         .orderByAsc(ReaderCategory::getSortOrder)
                         .orderByAsc(ReaderCategory::getId))
-                .stream().map(CategoryService::toView).toList();
+                .stream()
+                .map(CategoryService::toView)
+                .toList();
     }
 
     @Transactional
@@ -63,9 +66,11 @@ public class CategoryService {
     /** 删除分类，同时把引用它的书置为未分类——原来靠两条手写 SQL，现在一条批量更新完成。 */
     @Transactional
     public void delete(long id) {
-        bookMapper.update(null, Wrappers.<ReaderBook>lambdaUpdate()
-                .set(ReaderBook::getCategoryId, null)
-                .eq(ReaderBook::getCategoryId, id));
+        bookMapper.update(
+                null,
+                Wrappers.<ReaderBook>lambdaUpdate()
+                        .set(ReaderBook::getCategoryId, null)
+                        .eq(ReaderBook::getCategoryId, id));
         categoryMapper.deleteById(id);
     }
 

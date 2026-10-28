@@ -12,8 +12,7 @@ import org.flywaydb.core.api.output.MigrateResult;
  */
 public final class DatabaseMigrator {
 
-    private DatabaseMigrator() {
-    }
+    private DatabaseMigrator() {}
 
     public static void main(String[] args) {
         try {
@@ -39,8 +38,10 @@ public final class DatabaseMigrator {
                     .load();
 
             MigrateResult result = flyway.migrate();
-            System.out.printf("[db-migrate] %s 完成：执行 %d 个迁移，目标版本 %s%n",
-                    database, result.migrationsExecuted,
+            System.out.printf(
+                    "[db-migrate] %s 完成：执行 %d 个迁移，目标版本 %s%n",
+                    database,
+                    result.migrationsExecuted,
                     result.targetSchemaVersion == null ? "无" : result.targetSchemaVersion);
         } catch (RuntimeException exception) {
             System.err.println("[db-migrate] 迁移失败：" + exception.getMessage());

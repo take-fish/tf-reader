@@ -54,6 +54,7 @@ public class LibraryService {
     private static final SecureRandom RANDOM = new SecureRandom();
     /** 分享码有效期：过期后链接失效，重新调用分享接口会生成新 token。 */
     private static final Duration SHARE_TOKEN_TTL = Duration.ofDays(7);
+
     private static final int MAX_PAGE_SIZE = 100;
     /** 页码上限：防止 offset 过大，也防止有人从第 200 万页开始扫库。 */
     private static final int MAX_PAGE = 10_000;
@@ -86,37 +87,37 @@ public class LibraryService {
         this.maxImportBytes = maxImportBytes;
     }
 
-    public BookPage listPublic(Long categoryId, String keyword, int page, int size,
-            CurrentUser viewer) {
+    public BookPage listPublic(Long categoryId, String keyword, int page, int size, CurrentUser viewer) {
         int safePage = Math.min(MAX_PAGE, Math.max(0, page));
         int safeSize = Math.min(MAX_PAGE_SIZE, Math.max(1, size));
         // 对外 page 是 0-based，MyBatis-Plus 的 Page 是 1-based
-        IPage<ReaderBook> result = bookMapper.selectPublicPage(
-                new Page<>(safePage + 1L, safeSize), categoryId, keyword);
-        List<BookSummary> books = result.getRecords().stream()
-                .map(book -> summary(book, viewer)).toList();
+        IPage<ReaderBook> result =
+                bookMapper.selectPublicPage(new Page<>(safePage + 1L, safeSize), categoryId, keyword);
+        List<BookSummary> books =
+                result.getRecords().stream().map(book -> summary(book, viewer)).toList();
         return new BookPage(books, result.getTotal(), safePage, safeSize);
     }
 
     public List<BookSummary> listMine(CurrentUser viewer) {
         return bookMapper.selectOwned(viewer.id()).stream()
-                .map(book -> summary(book, viewer)).toList();
+                .map(book -> summary(book, viewer))
+                .toList();
     }
 
     public List<BookSummary> listShared(CurrentUser viewer) {
         return bookMapper.selectShared(viewer.id()).stream()
-                .map(book -> summary(book, viewer)).toList();
+                .map(book -> summary(book, viewer))
+                .toList();
     }
 
     public BookDetail getBook(long bookId, CurrentUser viewer) {
         ReaderBook book = requireReadable(bookId, viewer);
-        List<ChapterSummary> chapters = chapterMapper.selectList(
-                        Wrappers.<ReaderChapter>lambdaQuery()
-                                .eq(ReaderChapter::getBookId, bookId)
-                                .orderByAsc(ReaderChapter::getChapterIndex))
+        List<ChapterSummary> chapters = chapterMapper
+                .selectList(Wrappers.<ReaderChapter>lambdaQuery()
+                        .eq(ReaderChapter::getBookId, bookId)
+                        .orderByAsc(ReaderChapter::getChapterIndex))
                 .stream()
-                .map(row -> new ChapterSummary(
-                        row.getChapterIndex(), row.getTitle(), row.getWordCount()))
+                .map(row -> new ChapterSummary(row.getChapterIndex(), row.getTitle(), row.getWordCount()))
                 .toList();
         return new BookDetail(summary(book, viewer), chapters);
     }
@@ -124,14 +125,13 @@ public class LibraryService {
     public ChapterContent getChapter(long bookId, int chapterIndex, CurrentUser viewer) {
         ReaderBook book = requireReadable(bookId, viewer);
         Validation.requireChapterIndex(chapterIndex, book.chapterCountOrZero());
-        ReaderChapter chapter = findChapter(bookId, chapterIndex)
-                .orElseThrow(() -> new NotFoundException("章节不存在"));
+        ReaderChapter chapter = findChapter(bookId, chapterIndex).orElseThrow(() -> new NotFoundException("章节不存在"));
         return toContent(chapter);
     }
 
     /** 注意：这里刻意不加 @Transactional —— 文件落盘与章节解析都在事务之外，写库交给 BookImportWriter。 */
-    public BookSummary importBook(String scope, String title, String author, Long categoryId,
-            MultipartFile file, CurrentUser viewer) {
+    public BookSummary importBook(
+            String scope, String title, String author, Long categoryId, MultipartFile file, CurrentUser viewer) {
         BookScope normalizedScope = normalizeScope(scope);
         if (normalizedScope.isPublic()) {
             requirePermission(viewer, "reader.public.upload");
@@ -158,7 +158,10 @@ public class LibraryService {
         try {
             text = Texts.decode(file.getBytes());
             try (InputStream input = file.getInputStream()) {
-                stored = storage.store(input, filename, file.getContentType(),
+                stored = storage.store(
+                        input,
+                        filename,
+                        file.getContentType(),
                         "reader/books/" + normalizedScope.name().toLowerCase(Locale.ROOT),
                         maxImportBytes);
             }
@@ -172,22 +175,19 @@ public class LibraryService {
         }
 
         String fallbackTitle = stripExtension(filename);
-        String cleanTitle = Validation.truncate(
-                title == null || title.isBlank() ? fallbackTitle : title, 255);
+        String cleanTitle = Validation.truncate(title == null || title.isBlank() ? fallbackTitle : title, 255);
         if (cleanTitle.isEmpty()) {
             cleanTitle = "未命名书籍";
         }
         String cleanAuthor = Validation.truncate(author, 128);
-        String description = Validation.truncate(
-                "导入文本 · " + chapters.size() + " 章 · " + Texts.wordCount(text) + " 字", 1024);
+        String description =
+                Validation.truncate("导入文本 · " + chapters.size() + " 章 · " + Texts.wordCount(text) + " 字", 1024);
 
         List<ChapterRow> rows = new ArrayList<>(chapters.size());
         for (int i = 0; i < chapters.size(); i++) {
             ParsedChapter chapter = chapters.get(i);
-            String chapterTitle = chapter.title().isBlank()
-                    ? "第 " + (i + 1) + " 节" : chapter.title();
-            rows.add(new ChapterRow(i, Validation.truncate(chapterTitle, 255),
-                    chapter.content(), chapter.wordCount()));
+            String chapterTitle = chapter.title().isBlank() ? "第 " + (i + 1) + " 节" : chapter.title();
+            rows.add(new ChapterRow(i, Validation.truncate(chapterTitle, 255), chapter.content(), chapter.wordCount()));
         }
 
         long bookId;
@@ -210,7 +210,8 @@ public class LibraryService {
             storage.delete(stored.storageKey());
             throw exception;
         }
-        log.info("导入书籍完成",
+        log.info(
+                "导入书籍完成",
                 kv("event", "book.imported"),
                 kv("book_id", bookId),
                 kv("scope", normalizedScope),
@@ -246,7 +247,8 @@ public class LibraryService {
             book.setStatus(request.status());
         }
         bookMapper.updateById(book);
-        log.info("更新书籍元信息",
+        log.info(
+                "更新书籍元信息",
                 kv("event", "book.updated"),
                 kv("book_id", bookId),
                 kv("status", book.getStatus()),
@@ -261,7 +263,8 @@ public class LibraryService {
         // 软删除：只打标记。章节/进度/书签/批注与原始文件都保留，误删可以恢复
         book.setDeletedAt(Instant.now());
         bookMapper.updateById(book);
-        log.info("删除书籍",
+        log.info(
+                "删除书籍",
                 kv("event", "book.deleted"),
                 kv("book_id", bookId),
                 kv("scope", book.getScope()),
@@ -274,8 +277,7 @@ public class LibraryService {
         String existing = book.getShareToken();
         Instant expiresAt = book.getShareTokenExpiresAt();
         // 旧版本生成的 token 没有过期时间，视为仍有效；新生成的统一 7 天有效期
-        if (existing != null && !existing.isBlank()
-                && (expiresAt == null || expiresAt.isAfter(now))) {
+        if (existing != null && !existing.isBlank() && (expiresAt == null || expiresAt.isAfter(now))) {
             return new ShareLink(existing);
         }
         byte[] bytes = new byte[24];
@@ -346,10 +348,12 @@ public class LibraryService {
     }
 
     private Optional<ReaderChapter> findChapter(long bookId, int chapterIndex) {
-        return chapterMapper.selectList(Wrappers.<ReaderChapter>lambdaQuery()
+        return chapterMapper
+                .selectList(Wrappers.<ReaderChapter>lambdaQuery()
                         .eq(ReaderChapter::getBookId, bookId)
                         .eq(ReaderChapter::getChapterIndex, chapterIndex))
-                .stream().findFirst();
+                .stream()
+                .findFirst();
     }
 
     /** 章节正文转响应体，段落数由正文实时计算。 */
