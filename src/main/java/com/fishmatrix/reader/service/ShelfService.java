@@ -3,9 +3,14 @@ package com.fishmatrix.reader.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fishmatrix.common.auth.CurrentUser;
 import com.fishmatrix.common.error.ApiException;
+import com.fishmatrix.reader.domain.AccessRequestStatus;
+import com.fishmatrix.reader.entity.ReaderAccessRequest;
+import com.fishmatrix.reader.entity.ReaderBook;
 import com.fishmatrix.reader.entity.ReaderShelf;
 import com.fishmatrix.reader.entity.ReaderShelfBook;
 import com.fishmatrix.reader.error.NotFoundException;
+import com.fishmatrix.reader.mapper.ReaderAccessRequestMapper;
+import com.fishmatrix.reader.mapper.ReaderBookMapper;
 import com.fishmatrix.reader.mapper.ReaderShelfBookMapper;
 import com.fishmatrix.reader.mapper.ReaderShelfMapper;
 import com.fishmatrix.reader.model.BookSummary;
@@ -13,8 +18,6 @@ import com.fishmatrix.reader.model.Shelf;
 import com.fishmatrix.reader.model.ShelfDetail;
 import com.fishmatrix.reader.model.ShelfRequest;
 import com.fishmatrix.reader.policy.BookAccessPolicy;
-import com.fishmatrix.reader.repository.BookRepository;
-import com.fishmatrix.reader.repository.BookRepository.BookRecord;
 import com.fishmatrix.reader.util.Validation;
 import java.util.HashMap;
 import java.util.List;
@@ -31,19 +34,22 @@ public class ShelfService {
 
     private final ReaderShelfMapper shelfMapper;
     private final ReaderShelfBookMapper shelfBookMapper;
-    private final BookRepository bookRepository;
+    private final ReaderBookMapper bookMapper;
+    private final ReaderAccessRequestMapper accessMapper;
     private final LibraryService libraryService;
     private final BookAccessPolicy accessPolicy;
 
     public ShelfService(
             ReaderShelfMapper shelfMapper,
             ReaderShelfBookMapper shelfBookMapper,
-            BookRepository bookRepository,
+            ReaderBookMapper bookMapper,
+            ReaderAccessRequestMapper accessMapper,
             LibraryService libraryService,
             BookAccessPolicy accessPolicy) {
         this.shelfMapper = shelfMapper;
         this.shelfBookMapper = shelfBookMapper;
-        this.bookRepository = bookRepository;
+        this.bookMapper = bookMapper;
+        this.accessMapper = accessMapper;
         this.libraryService = libraryService;
         this.accessPolicy = accessPolicy;
     }
@@ -77,9 +83,9 @@ public class ShelfService {
             return new ShelfDetail(shelf, List.of());
         }
         // 固定 4 次查询：书单、书籍 id 列表、书籍本体、已获授权的书籍集合。
-        Map<Long, BookRecord> byId = bookRepository.findByIdIn(bookIds).stream()
-                .collect(Collectors.toMap(BookRecord::id, book -> book));
-        Set<Long> approvedBookIds = bookRepository.findApprovedBookIds(viewer.id(), bookIds);
+        Map<Long, ReaderBook> byId = bookMapper.selectByIds(bookIds).stream()
+                .collect(Collectors.toMap(ReaderBook::getId, book -> book));
+        Set<Long> approvedBookIds = approvedBookIds(viewer.id(), bookIds);
         List<BookSummary> books = bookIds.stream()
                 // 保持书架里的加入顺序（最近加入在前），并跳过已被删除的书。
                 .map(byId::get)
@@ -160,6 +166,14 @@ public class ShelfService {
     private int currentBookCount(long shelfId) {
         return Math.toIntExact(shelfBookMapper.selectCount(
                 Wrappers.<ReaderShelfBook>lambdaQuery().eq(ReaderShelfBook::getShelfId, shelfId)));
+    }
+
+    private Set<Long> approvedBookIds(long viewerId, List<Long> bookIds) {
+        return accessMapper.selectList(Wrappers.<ReaderAccessRequest>lambdaQuery()
+                        .eq(ReaderAccessRequest::getRequesterId, viewerId)
+                        .eq(ReaderAccessRequest::getStatus, AccessRequestStatus.APPROVED)
+                        .in(ReaderAccessRequest::getBookId, bookIds))
+                .stream().map(ReaderAccessRequest::getBookId).collect(Collectors.toSet());
     }
 
     private Map<Long, Integer> bookCounts(List<Long> shelfIds) {

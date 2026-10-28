@@ -1,9 +1,11 @@
 package com.fishmatrix.reader.service;
 
 import com.fishmatrix.reader.domain.BookScope;
-import com.fishmatrix.reader.repository.BookRepository;
-import com.fishmatrix.reader.repository.BookRepository.ChapterRow;
-import java.time.Instant;
+import com.fishmatrix.reader.domain.BookStatus;
+import com.fishmatrix.reader.entity.ReaderBook;
+import com.fishmatrix.reader.mapper.ReaderBookMapper;
+import com.fishmatrix.reader.mapper.ReaderChapterMapper;
+import com.fishmatrix.reader.model.ChapterRow;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,32 +20,42 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class BookImportWriter {
 
-    private final BookRepository bookRepository;
+    private final ReaderBookMapper bookMapper;
+    private final ReaderChapterMapper chapterMapper;
     private final ExperienceService experienceService;
 
-    public BookImportWriter(BookRepository bookRepository, ExperienceService experienceService) {
-        this.bookRepository = bookRepository;
+    public BookImportWriter(
+            ReaderBookMapper bookMapper,
+            ReaderChapterMapper chapterMapper,
+            ExperienceService experienceService) {
+        this.bookMapper = bookMapper;
+        this.chapterMapper = chapterMapper;
         this.experienceService = experienceService;
     }
 
     /** 一个短事务：写书籍行、批量写章节、给上传者加经验。任何一步失败整体回滚。 */
     @Transactional
     public long persist(ImportDraft draft) {
-        long bookId = bookRepository.insertBook(
-                draft.title(),
-                draft.author(),
-                draft.description(),
-                draft.chapters().size(),
-                draft.scope(),
-                draft.ownerId(),
-                draft.ownerNickname(),
-                draft.categoryId(),
-                draft.sourceFilename(),
-                draft.storageKey(),
-                draft.fileSize(),
-                draft.sha256(),
-                Instant.now());
-        bookRepository.insertChapters(bookId, draft.chapters());
+        ReaderBook book = new ReaderBook();
+        book.setTitle(draft.title());
+        book.setAuthor(draft.author());
+        book.setDescription(draft.description());
+        book.setChapterCount(draft.chapters().size());
+        book.setScope(draft.scope());
+        book.setOwnerId(draft.ownerId());
+        book.setOwnerNickname(draft.ownerNickname());
+        book.setCategoryId(draft.categoryId());
+        book.setStatus(BookStatus.VISIBLE);
+        book.setSourceFilename(draft.sourceFilename());
+        book.setStorageKey(draft.storageKey());
+        book.setFileSize(draft.fileSize());
+        book.setSha256(draft.sha256());
+        bookMapper.insert(book);
+
+        long bookId = book.getId();
+        if (!draft.chapters().isEmpty()) {
+            chapterMapper.insertChapters(bookId, draft.chapters());
+        }
         experienceService.rewardUpload(draft.ownerId());
         return bookId;
     }

@@ -1,10 +1,13 @@
 package com.fishmatrix.reader.policy;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fishmatrix.common.auth.CurrentUser;
 import com.fishmatrix.common.error.ApiException;
+import com.fishmatrix.reader.domain.AccessRequestStatus;
+import com.fishmatrix.reader.entity.ReaderAccessRequest;
+import com.fishmatrix.reader.entity.ReaderBook;
 import com.fishmatrix.reader.error.NotFoundException;
-import com.fishmatrix.reader.repository.BookRepository;
-import com.fishmatrix.reader.repository.BookRepository.BookRecord;
+import com.fishmatrix.reader.mapper.ReaderAccessRequestMapper;
 import java.util.Set;
 import org.springframework.stereotype.Component;
 
@@ -20,16 +23,15 @@ public class BookAccessPolicy {
     /** 管理任意公共书籍的权限；私有书籍不在此列，私有内容只属于所有者。 */
     private static final String PERMISSION_MANAGE_ANY = "reader.content.manage.any";
 
-    private final BookRepository bookRepository;
+    private final ReaderAccessRequestMapper accessMapper;
 
-    public BookAccessPolicy(BookRepository bookRepository) {
-        this.bookRepository = bookRepository;
+    public BookAccessPolicy(ReaderAccessRequestMapper accessMapper) {
+        this.accessMapper = accessMapper;
     }
 
-    public boolean canRead(BookRecord book, CurrentUser viewer) {
+    public boolean canRead(ReaderBook book, CurrentUser viewer) {
         if (book.isPrivate()) {
-            return isOwner(book, viewer)
-                    || bookRepository.hasApprovedAccess(book.id(), viewer.id());
+            return isOwner(book, viewer) || hasApprovedAccess(book.getId(), viewer.id());
         }
         return book.isVisible() || canManageAny(viewer);
     }
@@ -38,14 +40,14 @@ public class BookAccessPolicy {
      * 批量判定用的重载：{@code approvedBookIds} 由调用方一次性查好，
      * 避免"书单里每本私有书查一次审批记录"造成的 N+1。
      */
-    public boolean canRead(BookRecord book, CurrentUser viewer, Set<Long> approvedBookIds) {
+    public boolean canRead(ReaderBook book, CurrentUser viewer, Set<Long> approvedBookIds) {
         if (book.isPrivate()) {
-            return isOwner(book, viewer) || approvedBookIds.contains(book.id());
+            return isOwner(book, viewer) || approvedBookIds.contains(book.getId());
         }
         return book.isVisible() || canManageAny(viewer);
     }
 
-    public boolean canModify(BookRecord book, CurrentUser viewer) {
+    public boolean canModify(ReaderBook book, CurrentUser viewer) {
         return isOwner(book, viewer) || (book.isPublic() && canManageAny(viewer));
     }
 
@@ -53,26 +55,26 @@ public class BookAccessPolicy {
         return viewer.hasPermission(PERMISSION_MANAGE_ANY);
     }
 
-    public boolean isOwner(BookRecord book, CurrentUser viewer) {
+    public boolean isOwner(ReaderBook book, CurrentUser viewer) {
         return book.isOwnedBy(viewer.id());
     }
 
     /** 读不到就当作不存在：私有内容对无权用户返回 404，不暴露存在性。 */
-    public void requireReadable(BookRecord book, CurrentUser viewer) {
+    public void requireReadable(ReaderBook book, CurrentUser viewer) {
         if (!canRead(book, viewer)) {
             throw new NotFoundException("书籍不存在");
         }
     }
 
-    public void requireEditable(BookRecord book, CurrentUser viewer) {
+    public void requireEditable(ReaderBook book, CurrentUser viewer) {
         requireModifiable(book, viewer, "管理");
     }
 
-    public void requireDeletable(BookRecord book, CurrentUser viewer) {
+    public void requireDeletable(ReaderBook book, CurrentUser viewer) {
         requireModifiable(book, viewer, "删除");
     }
 
-    private void requireModifiable(BookRecord book, CurrentUser viewer, String action) {
+    private void requireModifiable(ReaderBook book, CurrentUser viewer, String action) {
         boolean owner = isOwner(book, viewer);
         if (!book.isPublic() && !owner) {
             // 私有内容对非所有者统一表现为不存在，避免泄露书名等元信息。
@@ -81,5 +83,13 @@ public class BookAccessPolicy {
         if (!canModify(book, viewer)) {
             throw ApiException.forbidden("没有" + action + "这本书的权限");
         }
+    }
+
+    private boolean hasApprovedAccess(long bookId, long viewerId) {
+        Long approved = accessMapper.selectCount(Wrappers.<ReaderAccessRequest>lambdaQuery()
+                .eq(ReaderAccessRequest::getBookId, bookId)
+                .eq(ReaderAccessRequest::getRequesterId, viewerId)
+                .eq(ReaderAccessRequest::getStatus, AccessRequestStatus.APPROVED));
+        return approved != null && approved > 0;
     }
 }

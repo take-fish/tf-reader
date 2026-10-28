@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishmatrix.reader.mapper.ReaderChapterMapper">
+
+  <insert id="insertChapters">
+    INSERT INTO reader_chapter (book_id, chapter_index, title, content, word_count)
+    VALUES
+    <foreach collection="chapters" item="c" separator=",">
+      (#{bookId}, #{c.index}, #{c.title}, #{c.content}, #{c.wordCount})
+    </foreach>
+  </insert>
+
+</mapper>

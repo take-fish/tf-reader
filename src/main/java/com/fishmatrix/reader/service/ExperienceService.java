@@ -1,13 +1,13 @@
 package com.fishmatrix.reader.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.fishmatrix.reader.entity.ReaderBook;
 import com.fishmatrix.reader.entity.ReaderReadingStat;
 import com.fishmatrix.reader.entity.ReaderUserStats;
+import com.fishmatrix.reader.mapper.ReaderBookMapper;
 import com.fishmatrix.reader.mapper.ReaderReadingStatMapper;
 import com.fishmatrix.reader.mapper.ReaderUserStatsMapper;
 import com.fishmatrix.reader.model.UserStats;
-import com.fishmatrix.reader.repository.BookRepository;
-import com.fishmatrix.reader.repository.BookRepository.BookRecord;
 import java.time.Duration;
 import java.time.Instant;
 import org.springframework.stereotype.Service;
@@ -35,15 +35,15 @@ public class ExperienceService {
 
     private final ReaderUserStatsMapper statsMapper;
     private final ReaderReadingStatMapper readingMapper;
-    private final BookRepository bookRepository;
+    private final ReaderBookMapper bookMapper;
 
     public ExperienceService(
             ReaderUserStatsMapper statsMapper,
             ReaderReadingStatMapper readingMapper,
-            BookRepository bookRepository) {
+            ReaderBookMapper bookMapper) {
         this.statsMapper = statsMapper;
         this.readingMapper = readingMapper;
-        this.bookRepository = bookRepository;
+        this.bookMapper = bookMapper;
     }
 
     /** 等级 9→0，0 最高。满级后继续返回 0。 */
@@ -122,9 +122,9 @@ public class ExperienceService {
 
         // 别人在读我的书：每满 1 小时给书主 1 点；自己读自己的书不结算。
         if (ownerGain > 0) {
-            BookRecord book = bookRepository.findById(bookId).orElse(null);
-            if (book != null && book.ownerId() != null && !book.ownerId().equals(userId)) {
-                addExperience(book.ownerId(), ownerGain);
+            ReaderBook book = bookMapper.selectByIdWithCategory(bookId);
+            if (book != null && book.getOwnerId() != null && !book.getOwnerId().equals(userId)) {
+                addExperience(book.getOwnerId(), ownerGain);
             }
         }
         return toView(stats);

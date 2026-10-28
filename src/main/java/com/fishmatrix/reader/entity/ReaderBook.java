@@ -41,4 +41,24 @@ public class ReaderBook {
     /** 非表字段：JOIN reader_category 得到，由 XML 填充。 */
     @TableField(exist = false)
     private String categoryName;
+
+    public boolean isPublic() {
+        return scope != null && scope.isPublic();
+    }
+
+    public boolean isPrivate() {
+        return scope != null && scope.isPrivate();
+    }
+
+    public boolean isVisible() {
+        return status != null && status.isVisible();
+    }
+
+    public boolean isOwnedBy(long userId) {
+        return ownerId != null && ownerId == userId;
+    }
+
+    public int chapterCountOrZero() {
+        return chapterCount == null ? 0 : chapterCount;
+    }
 }

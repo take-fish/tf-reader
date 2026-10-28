@@ -3,6 +3,7 @@ package com.fishmatrix.reader.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fishmatrix.common.auth.CurrentUser;
 import com.fishmatrix.common.error.ApiException;
+import com.fishmatrix.reader.entity.ReaderBook;
 import com.fishmatrix.reader.entity.ReaderBookmark;
 import com.fishmatrix.reader.entity.ReaderProgress;
 import com.fishmatrix.reader.error.NotFoundException;
@@ -11,7 +12,6 @@ import com.fishmatrix.reader.mapper.ReaderProgressMapper;
 import com.fishmatrix.reader.model.Bookmark;
 import com.fishmatrix.reader.model.BookmarkRequest;
 import com.fishmatrix.reader.model.ReadingProgress;
-import com.fishmatrix.reader.repository.BookRepository.BookRecord;
 import com.fishmatrix.reader.util.Validation;
 import java.time.Instant;
 import java.util.List;
@@ -47,8 +47,8 @@ public class ReadingService {
 
     public void saveProgress(CurrentUser viewer, long bookId, int chapterIndex,
             double scrollRatio) {
-        BookRecord book = libraryService.requireReadable(bookId, viewer);
-        Validation.requireChapterIndex(chapterIndex, book.chapterCount());
+        ReaderBook book = libraryService.requireReadable(bookId, viewer);
+        Validation.requireChapterIndex(chapterIndex, book.chapterCountOrZero());
         ReaderProgress progress = new ReaderProgress();
         progress.setUserId(viewer.id());
         progress.setBookId(bookId);
@@ -73,8 +73,8 @@ public class ReadingService {
         if (request == null) {
             throw ApiException.badRequest("请求体不能为空");
         }
-        BookRecord book = libraryService.requireReadable(bookId, viewer);
-        Validation.requireChapterIndex(request.chapterIndex(), book.chapterCount());
+        ReaderBook book = libraryService.requireReadable(bookId, viewer);
+        Validation.requireChapterIndex(request.chapterIndex(), book.chapterCountOrZero());
         if (request.paragraphIndex() < 0) {
             throw ApiException.badRequest("段落索引不合法");
         }

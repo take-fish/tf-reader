@@ -1,16 +1,18 @@
 package com.fishmatrix.reader.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fishmatrix.common.auth.CurrentUser;
 import com.fishmatrix.common.error.ApiException;
 import com.fishmatrix.reader.entity.ReaderAnnotation;
+import com.fishmatrix.reader.entity.ReaderBook;
+import com.fishmatrix.reader.entity.ReaderChapter;
 import com.fishmatrix.reader.error.NotFoundException;
 import com.fishmatrix.reader.mapper.ReaderAnnotationMapper;
+import com.fishmatrix.reader.mapper.ReaderChapterMapper;
 import com.fishmatrix.reader.model.Annotation;
 import com.fishmatrix.reader.model.AnnotationRequest;
 import com.fishmatrix.reader.model.ChapterContent;
-import com.fishmatrix.reader.repository.BookRepository;
-import com.fishmatrix.reader.repository.BookRepository.BookRecord;
 import com.fishmatrix.reader.util.Validation;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -21,22 +23,22 @@ public class AnnotationService {
     private static final int MAX_BATCH = 200;
 
     private final LibraryService libraryService;
-    private final BookRepository bookRepository;
+    private final ReaderChapterMapper chapterMapper;
     private final ReaderAnnotationMapper annotationMapper;
 
     public AnnotationService(
             LibraryService libraryService,
-            BookRepository bookRepository,
+            ReaderChapterMapper chapterMapper,
             ReaderAnnotationMapper annotationMapper) {
         this.libraryService = libraryService;
-        this.bookRepository = bookRepository;
+        this.chapterMapper = chapterMapper;
         this.annotationMapper = annotationMapper;
     }
 
     public List<Annotation> listBookAnnotations(long bookId, int chapterIndex, long afterId,
             int limit, CurrentUser viewer) {
-        BookRecord book = libraryService.requireReadable(bookId, viewer);
-        Validation.requireChapterIndex(chapterIndex, book.chapterCount());
+        ReaderBook book = libraryService.requireReadable(bookId, viewer);
+        Validation.requireChapterIndex(chapterIndex, book.chapterCountOrZero());
         long cursor = Math.max(0, afterId);
         int batch = Math.min(MAX_BATCH, Math.max(1, limit));
         // 游标 + 固定上限，用 last 拼 LIMIT（batch 已被钳制在 1..200，无注入风险）
@@ -54,11 +56,15 @@ public class AnnotationService {
         if (request == null) {
             throw ApiException.badRequest("请求体不能为空");
         }
-        BookRecord book = libraryService.requireReadable(bookId, viewer);
-        Validation.requireChapterIndex(chapterIndex, book.chapterCount());
-        ChapterContent chapter = bookRepository.findChapter(bookId, chapterIndex)
+        ReaderBook book = libraryService.requireReadable(bookId, viewer);
+        Validation.requireChapterIndex(chapterIndex, book.chapterCountOrZero());
+        ReaderChapter chapter = chapterMapper.selectList(Wrappers.<ReaderChapter>lambdaQuery()
+                        .eq(ReaderChapter::getBookId, bookId)
+                        .eq(ReaderChapter::getChapterIndex, chapterIndex))
+                .stream().findFirst()
                 .orElseThrow(() -> new NotFoundException("章节不存在"));
-        if (request.paragraphIndex() < 0 || request.paragraphIndex() >= chapter.paragraphCount()) {
+        ChapterContent content = LibraryService.toContent(chapter);
+        if (request.paragraphIndex() < 0 || request.paragraphIndex() >= content.paragraphCount()) {
             throw ApiException.badRequest("段落索引不合法");
         }
 

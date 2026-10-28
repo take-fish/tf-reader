@@ -7,13 +7,13 @@ import com.fishmatrix.common.auth.CurrentUser;
 import com.fishmatrix.common.error.ApiException;
 import com.fishmatrix.reader.domain.AccessRequestStatus;
 import com.fishmatrix.reader.entity.ReaderAccessRequest;
+import com.fishmatrix.reader.entity.ReaderBook;
 import com.fishmatrix.reader.error.NotFoundException;
 import com.fishmatrix.reader.error.ReaderErrorCodes;
 import com.fishmatrix.reader.mapper.ReaderAccessRequestMapper;
+import com.fishmatrix.reader.mapper.ReaderBookMapper;
 import com.fishmatrix.reader.model.AccessRequestCreate;
 import com.fishmatrix.reader.model.AccessRequestView;
-import com.fishmatrix.reader.repository.BookRepository;
-import com.fishmatrix.reader.repository.BookRepository.BookRecord;
 import com.fishmatrix.reader.util.Validation;
 import java.time.Duration;
 import java.time.Instant;
@@ -42,28 +42,28 @@ public class AccessRequestService {
     private static final Duration REJECT_COOLDOWN = Duration.ofHours(24);
 
     private final ReaderAccessRequestMapper accessMapper;
-    private final BookRepository bookRepository;
+    private final ReaderBookMapper bookMapper;
     private final LibraryService libraryService;
 
     public AccessRequestService(
             ReaderAccessRequestMapper accessMapper,
-            BookRepository bookRepository,
+            ReaderBookMapper bookMapper,
             LibraryService libraryService) {
         this.accessMapper = accessMapper;
-        this.bookRepository = bookRepository;
+        this.bookMapper = bookMapper;
         this.libraryService = libraryService;
     }
 
     @Transactional
     public AccessRequestView request(long bookId, AccessRequestCreate create, CurrentUser viewer) {
-        BookRecord book = bookRepository.findById(bookId)
-                .filter(BookRecord::isPrivate)
+        ReaderBook book = Optional.ofNullable(bookMapper.selectByIdWithCategory(bookId))
+                .filter(ReaderBook::isPrivate)
                 .orElseThrow(() -> ApiException.notFound("书籍不存在"));
         if (book.isOwnedBy(viewer.id())) {
             throw ApiException.badRequest("不能申请访问自己的书籍");
         }
         if (create == null || create.shareToken() == null || create.shareToken().isBlank()
-                || !create.shareToken().equals(book.shareToken())) {
+                || !create.shareToken().equals(book.getShareToken())) {
             throw ApiException.forbidden("请通过有效的分享链接发起申请");
         }
         String message = Validation.text(create.message(), 255, "申请说明", false);
@@ -92,7 +92,7 @@ public class AccessRequestService {
 
         ReaderAccessRequest entity = existing.orElseGet(ReaderAccessRequest::new);
         entity.setBookId(bookId);
-        entity.setOwnerId(book.ownerId());
+        entity.setOwnerId(book.getOwnerId());
         entity.setRequesterId(viewer.id());
         entity.setRequesterNickname(Validation.truncate(viewer.nickname(), 32));
         entity.setStatus(AccessRequestStatus.PENDING);
@@ -110,7 +110,7 @@ public class AccessRequestService {
                 kv("event", "access.requested"),
                 kv("request_id", entity.getId()),
                 kv("book_id", bookId),
-                kv("owner_id", book.ownerId()),
+                kv("owner_id", book.getOwnerId()),
                 kv("requester_id", viewer.id()));
         return toView(require(entity.getId()), book);
     }
@@ -144,7 +144,7 @@ public class AccessRequestService {
                 kv("book_id", request.getBookId()),
                 kv("requester_id", request.getRequesterId()),
                 kv("actor_id", viewer.id()));
-        return toView(request, bookRepository.findById(request.getBookId()).orElse(null));
+        return toView(request, bookMapper.selectByIdWithCategory(request.getBookId()));
     }
 
     @Transactional
@@ -158,7 +158,7 @@ public class AccessRequestService {
                 kv("book_id", request.getBookId()),
                 kv("requester_id", request.getRequesterId()),
                 kv("actor_id", viewer.id()));
-        return toView(request, bookRepository.findById(request.getBookId()).orElse(null));
+        return toView(request, bookMapper.selectByIdWithCategory(request.getBookId()));
     }
 
     @Transactional
@@ -175,7 +175,7 @@ public class AccessRequestService {
                 kv("book_id", request.getBookId()),
                 kv("requester_id", request.getRequesterId()),
                 kv("actor_id", viewer.id()));
-        return toView(request, bookRepository.findById(request.getBookId()).orElse(null));
+        return toView(request, bookMapper.selectByIdWithCategory(request.getBookId()));
     }
 
     @Transactional
@@ -194,7 +194,7 @@ public class AccessRequestService {
                 kv("request_id", id),
                 kv("book_id", request.getBookId()),
                 kv("actor_id", viewer.id()));
-        return toView(request, bookRepository.findById(request.getBookId()).orElse(null));
+        return toView(request, bookMapper.selectByIdWithCategory(request.getBookId()));
     }
 
     private Optional<ReaderAccessRequest> findByBookAndRequester(long bookId, long requesterId) {
@@ -242,18 +242,18 @@ public class AccessRequestService {
         }
         List<Long> bookIds = rows.stream()
                 .map(ReaderAccessRequest::getBookId).distinct().toList();
-        Map<Long, BookRecord> books = bookRepository.findByIdIn(bookIds).stream()
-                .collect(Collectors.toMap(BookRecord::id, book -> book));
+        Map<Long, ReaderBook> books = bookMapper.selectByIds(bookIds).stream()
+                .collect(Collectors.toMap(ReaderBook::getId, book -> book));
         return rows.stream().map(row -> toView(row, books.get(row.getBookId()))).toList();
     }
 
-    private static AccessRequestView toView(ReaderAccessRequest entity, BookRecord book) {
+    private static AccessRequestView toView(ReaderAccessRequest entity, ReaderBook book) {
         return new AccessRequestView(
                 entity.getId(),
                 entity.getBookId(),
-                book == null ? "" : book.title(),
+                book == null ? "" : book.getTitle(),
                 entity.getOwnerId(),
-                book == null ? "" : book.ownerNickname(),
+                book == null ? "" : book.getOwnerNickname(),
                 entity.getRequesterId(),
                 entity.getRequesterNickname(),
                 entity.getStatus(),
