@@ -9,6 +9,4 @@ import jakarta.validation.constraints.Size;
  */
 public record AnnotationRequest(
         @Min(value = 0, message = "段落索引不合法") int paragraphIndex,
-        @NotBlank(message = "评审意见不能为空")
-        @Size(max = 500, message = "评审意见不能超过 500 个字符") String content) {
-}
+        @NotBlank(message = "评审意见不能为空") @Size(max = 500, message = "评审意见不能超过 500 个字符") String content) {}

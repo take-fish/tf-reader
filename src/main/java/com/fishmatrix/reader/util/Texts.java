@@ -10,8 +10,7 @@ import java.util.Arrays;
 
 public final class Texts {
 
-    private Texts() {
-    }
+    private Texts() {}
 
     public static String normalize(String raw) {
         if (raw == null) {
@@ -28,7 +27,9 @@ public final class Texts {
         if (content == null || content.isEmpty()) {
             return 0;
         }
-        return (int) content.codePoints().filter(codePoint -> !Character.isWhitespace(codePoint)).count();
+        return (int) content.codePoints()
+                .filter(codePoint -> !Character.isWhitespace(codePoint))
+                .count();
     }
 
     public static int paragraphCount(String content) {
@@ -50,7 +51,8 @@ public final class Texts {
      */
     public static String decode(byte[] bytes) {
         try {
-            return StandardCharsets.UTF_8.newDecoder()
+            return StandardCharsets.UTF_8
+                    .newDecoder()
                     .onMalformedInput(CodingErrorAction.REPORT)
                     .onUnmappableCharacter(CodingErrorAction.REPORT)
                     .decode(ByteBuffer.wrap(bytes))

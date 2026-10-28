@@ -24,5 +24,4 @@ public record BookSummary(
         boolean canEdit,
         boolean canDelete,
         Instant createdAt,
-        Instant updatedAt) {
-}
+        Instant updatedAt) {}

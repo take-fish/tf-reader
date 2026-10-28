@@ -127,13 +127,12 @@ class ExperienceServiceTest {
     }
 
     private BookSummary importPublicBook(CurrentUser who) {
-        MockMultipartFile file = new MockMultipartFile("file", "book.txt", "text/plain",
-                SAMPLE_TEXT.getBytes(StandardCharsets.UTF_8));
+        MockMultipartFile file =
+                new MockMultipartFile("file", "book.txt", "text/plain", SAMPLE_TEXT.getBytes(StandardCharsets.UTF_8));
         return libraryService.importBook("public", "经验值测试书", "作者", null, file, who);
     }
 
     private static CurrentUser user(long id, String nickname, String... permissions) {
-        return new CurrentUser(id, "u" + id, nickname, "USER",
-                List.of("USER"), Set.of(permissions));
+        return new CurrentUser(id, "u" + id, nickname, "USER", List.of("USER"), Set.of(permissions));
     }
 }

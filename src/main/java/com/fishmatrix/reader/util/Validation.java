@@ -4,8 +4,7 @@ import com.fishmatrix.common.error.ApiException;
 
 public final class Validation {
 
-    private Validation() {
-    }
+    private Validation() {}
 
     public static void requireChapterIndex(int chapterIndex, int chapterCount) {
         if (chapterIndex < 0 || chapterIndex >= chapterCount) {

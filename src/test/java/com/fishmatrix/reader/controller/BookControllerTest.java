@@ -1,10 +1,5 @@
 package com.fishmatrix.reader.controller;
 
-import com.fishmatrix.common.auth.CurrentUser;
-import com.fishmatrix.common.auth.UserContext;
-import com.fishmatrix.common.autoconfigure.FishCommonProperties;
-import com.fishmatrix.common.error.ApiException;
-import com.fishmatrix.common.error.GlobalExceptionHandler;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -15,6 +10,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fishmatrix.common.auth.CurrentUser;
+import com.fishmatrix.common.auth.UserContext;
+import com.fishmatrix.common.autoconfigure.FishCommonProperties;
+import com.fishmatrix.common.error.ApiException;
+import com.fishmatrix.common.error.GlobalExceptionHandler;
 import com.fishmatrix.reader.domain.BookScope;
 import com.fishmatrix.reader.domain.BookStatus;
 import com.fishmatrix.reader.error.NotFoundException;
@@ -35,9 +35,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 class BookControllerTest {
 
-    private static final CurrentUser VIEWER = new CurrentUser(
-            7L, "reader", "读书人", "USER", List.of("USER"),
-            java.util.Set.of("reader.public.upload"));
+    private static final CurrentUser VIEWER =
+            new CurrentUser(7L, "reader", "读书人", "USER", List.of("USER"), java.util.Set.of("reader.public.upload"));
 
     private LibraryService libraryService;
     private MockMvc mockMvc;
@@ -57,9 +56,23 @@ class BookControllerTest {
     }
 
     private static BookSummary summary(long id, String title) {
-        return new BookSummary(id, title, "作者", "描述", 3, BookScope.PUBLIC, null, "", null, null,
-                BookStatus.VISIBLE, false, false, false,
-                Instant.parse("2026-10-18T09:00:00Z"), Instant.parse("2026-10-18T09:00:00Z"));
+        return new BookSummary(
+                id,
+                title,
+                "作者",
+                "描述",
+                3,
+                BookScope.PUBLIC,
+                null,
+                "",
+                null,
+                null,
+                BookStatus.VISIBLE,
+                false,
+                false,
+                false,
+                Instant.parse("2026-10-18T09:00:00Z"),
+                Instant.parse("2026-10-18T09:00:00Z"));
     }
 
     @Test
@@ -98,8 +111,8 @@ class BookControllerTest {
 
     @Test
     void returnsBookDetail() throws Exception {
-        when(libraryService.getBook(eq(1L), any())).thenReturn(new BookDetail(
-                summary(1L, "演示书"), List.of(new ChapterSummary(0, "第一章", 100))));
+        when(libraryService.getBook(eq(1L), any()))
+                .thenReturn(new BookDetail(summary(1L, "演示书"), List.of(new ChapterSummary(0, "第一章", 100))));
 
         mockMvc.perform(get("/api/v1/reader/books/1"))
                 .andExpect(status().isOk())
@@ -109,8 +122,7 @@ class BookControllerTest {
 
     @Test
     void returnsChapter() throws Exception {
-        when(libraryService.getChapter(eq(1L), eq(0), any()))
-                .thenReturn(new ChapterContent(0, "第一章", "正文", 1));
+        when(libraryService.getChapter(eq(1L), eq(0), any())).thenReturn(new ChapterContent(0, "第一章", "正文", 1));
 
         mockMvc.perform(get("/api/v1/reader/books/1/chapters/0"))
                 .andExpect(status().isOk())
@@ -119,14 +131,11 @@ class BookControllerTest {
 
     @Test
     void importsTxt() throws Exception {
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "novel.txt", "text/plain", "第一章 开始\n正文".getBytes());
+        MockMultipartFile file = new MockMultipartFile("file", "novel.txt", "text/plain", "第一章 开始\n正文".getBytes());
         when(libraryService.importBook(any(), any(), any(), any(), any(), any()))
                 .thenReturn(summary(9L, "novel"));
 
-        mockMvc.perform(multipart("/api/v1/reader/books/import")
-                        .file(file)
-                        .param("author", "作者"))
+        mockMvc.perform(multipart("/api/v1/reader/books/import").file(file).param("author", "作者"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(9));
     }
@@ -142,8 +151,7 @@ class BookControllerTest {
 
     @Test
     void mapsBadRequest() throws Exception {
-        when(libraryService.getChapter(eq(1L), eq(5), any()))
-                .thenThrow(ApiException.badRequest("章节不存在"));
+        when(libraryService.getChapter(eq(1L), eq(5), any())).thenThrow(ApiException.badRequest("章节不存在"));
 
         mockMvc.perform(get("/api/v1/reader/books/1/chapters/5"))
                 .andExpect(status().isBadRequest())
@@ -154,8 +162,7 @@ class BookControllerTest {
     void rejectsAnonymousRequestAtController() throws Exception {
         UserContext.clear();
 
-        mockMvc.perform(get("/api/v1/reader/books"))
-                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/reader/books")).andExpect(status().isUnauthorized());
     }
 
     @Test

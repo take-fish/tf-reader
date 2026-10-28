@@ -9,5 +9,4 @@ import org.apache.ibatis.annotations.Mapper;
  * 不要使用 selectById / updateById / deleteById，这些方法在无主键实体上不可用。
  */
 @Mapper
-public interface ReaderShelfBookMapper extends BaseMapper<ReaderShelfBook> {
-}
+public interface ReaderShelfBookMapper extends BaseMapper<ReaderShelfBook> {}

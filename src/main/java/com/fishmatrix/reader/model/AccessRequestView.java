@@ -15,5 +15,4 @@ public record AccessRequestView(
         String message,
         String decisionMessage,
         Instant createdAt,
-        Instant decidedAt) {
-}
+        Instant decidedAt) {}

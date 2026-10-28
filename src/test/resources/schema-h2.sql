@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS reader_chapter (
 );
 
 CREATE TABLE IF NOT EXISTS reader_progress (
-    user_id VARCHAR(64) NOT NULL,
+    user_id BIGINT NOT NULL,
     book_id BIGINT NOT NULL,
     chapter_index INT NOT NULL DEFAULT 0,
     scroll_ratio DOUBLE NOT NULL DEFAULT 0,
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS reader_progress (
 
 CREATE TABLE IF NOT EXISTS reader_bookmark (
     id BIGINT NOT NULL AUTO_INCREMENT,
-    user_id VARCHAR(64) NOT NULL,
+    user_id BIGINT NOT NULL,
     book_id BIGINT NOT NULL,
     chapter_index INT NOT NULL,
     paragraph_index INT NOT NULL,
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS reader_annotation (
     book_id BIGINT NOT NULL,
     chapter_index INT NOT NULL,
     paragraph_index INT NOT NULL,
-    user_id VARCHAR(64) NOT NULL,
+    user_id BIGINT NOT NULL,
     nickname VARCHAR(32) NOT NULL,
     content VARCHAR(500) NOT NULL,
     created_at TIMESTAMP(3) NOT NULL,
@@ -155,3 +155,27 @@ CREATE TABLE IF NOT EXISTS reader_reading_stat (
 
 CREATE INDEX IF NOT EXISTS idx_reader_reading_stat_book
     ON reader_reading_stat (book_id);
+
+-- V5: 乐观锁与外键（与 db/migration/V5__optimistic_lock_and_fk.sql 保持一致）
+ALTER TABLE reader_book ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 0;
+ALTER TABLE reader_shelf ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 0;
+ALTER TABLE reader_access_request ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 0;
+
+ALTER TABLE reader_book ADD CONSTRAINT IF NOT EXISTS fk_reader_book_category
+    FOREIGN KEY (category_id) REFERENCES reader_category (id) ON DELETE SET NULL;
+ALTER TABLE reader_chapter ADD CONSTRAINT IF NOT EXISTS fk_reader_chapter_book
+    FOREIGN KEY (book_id) REFERENCES reader_book (id) ON DELETE CASCADE;
+ALTER TABLE reader_progress ADD CONSTRAINT IF NOT EXISTS fk_reader_progress_book
+    FOREIGN KEY (book_id) REFERENCES reader_book (id) ON DELETE CASCADE;
+ALTER TABLE reader_bookmark ADD CONSTRAINT IF NOT EXISTS fk_reader_bookmark_book
+    FOREIGN KEY (book_id) REFERENCES reader_book (id) ON DELETE CASCADE;
+ALTER TABLE reader_annotation ADD CONSTRAINT IF NOT EXISTS fk_reader_annotation_book
+    FOREIGN KEY (book_id) REFERENCES reader_book (id) ON DELETE CASCADE;
+ALTER TABLE reader_access_request ADD CONSTRAINT IF NOT EXISTS fk_reader_access_request_book
+    FOREIGN KEY (book_id) REFERENCES reader_book (id) ON DELETE CASCADE;
+ALTER TABLE reader_shelf_book ADD CONSTRAINT IF NOT EXISTS fk_reader_shelf_book_book
+    FOREIGN KEY (book_id) REFERENCES reader_book (id) ON DELETE CASCADE;
+
+-- V6: 软删除与分享码有效期（与 db/migration/V6__soft_delete_and_share_expiry.sql 保持一致）
+ALTER TABLE reader_book ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP(3) NULL;
+ALTER TABLE reader_book ADD COLUMN IF NOT EXISTS share_token_expires_at TIMESTAMP(3) NULL;

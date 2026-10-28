@@ -82,13 +82,11 @@ public class BookController {
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String author,
             @RequestParam(required = false) Long categoryId) {
-        return libraryService.importBook(scope, title, author, categoryId, file,
-                UserContext.require());
+        return libraryService.importBook(scope, title, author, categoryId, file, UserContext.require());
     }
 
     @PatchMapping("/books/{bookId}")
-    public BookSummary updateBook(@PathVariable long bookId,
-            @Valid @RequestBody BookUpdateRequest request) {
+    public BookSummary updateBook(@PathVariable long bookId, @Valid @RequestBody BookUpdateRequest request) {
         return libraryService.update(bookId, request, UserContext.require());
     }
 

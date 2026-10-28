@@ -12,5 +12,4 @@ public record BookUpdateRequest(
         @Size(max = 128, message = "作者不能超过 128 个字符") String author,
         @Size(max = 1024, message = "简介不能超过 1024 个字符") String description,
         Long categoryId,
-        BookStatus status) {
-}
+        BookStatus status) {}

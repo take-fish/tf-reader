@@ -39,8 +39,7 @@ public class CategoryController {
 
     @PutMapping("/categories/{categoryId}")
     @RequirePermission("reader.category.manage")
-    public Category update(@PathVariable long categoryId,
-            @Valid @RequestBody CategoryRequest request) {
+    public Category update(@PathVariable long categoryId, @Valid @RequestBody CategoryRequest request) {
         return categoryService.update(categoryId, request);
     }
 

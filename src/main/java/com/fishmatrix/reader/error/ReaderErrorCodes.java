@@ -12,6 +12,5 @@ public final class ReaderErrorCodes {
     /** 申请被拒后处于冷却期。 */
     public static final String ACCESS_COOLDOWN = "REQUEST_COOLDOWN";
 
-    private ReaderErrorCodes() {
-    }
+    private ReaderErrorCodes() {}
 }
