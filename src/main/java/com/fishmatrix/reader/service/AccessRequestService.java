@@ -62,6 +62,9 @@ public class AccessRequestService {
         if (book.isOwnedBy(viewer.id())) {
             throw ApiException.badRequest("不能申请访问自己的书籍");
         }
+        if (!libraryService.shareTokenValid(book)) {
+            throw ApiException.forbidden("分享链接已失效");
+        }
         if (create == null || create.shareToken() == null || create.shareToken().isBlank()
                 || !create.shareToken().equals(book.getShareToken())) {
             throw ApiException.forbidden("请通过有效的分享链接发起申请");

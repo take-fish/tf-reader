@@ -43,6 +43,12 @@ public class ReaderBook {
     @Version
     private Integer version;
 
+    /** 软删除标记：有值即视为已删除，所有读取查询都要带 deleted_at IS NULL。 */
+    private Instant deletedAt;
+
+    /** 分享码过期时间；空表示该 token 由旧版本生成，未设过期。 */
+    private Instant shareTokenExpiresAt;
+
     /** 非表字段：JOIN reader_category 得到，由 XML 填充。 */
     @TableField(exist = false)
     private String categoryName;

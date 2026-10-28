@@ -175,3 +175,7 @@ ALTER TABLE reader_access_request ADD CONSTRAINT IF NOT EXISTS fk_reader_access_
     FOREIGN KEY (book_id) REFERENCES reader_book (id) ON DELETE CASCADE;
 ALTER TABLE reader_shelf_book ADD CONSTRAINT IF NOT EXISTS fk_reader_shelf_book_book
     FOREIGN KEY (book_id) REFERENCES reader_book (id) ON DELETE CASCADE;
+
+-- V6: 软删除与分享码有效期（与 db/migration/V6__soft_delete_and_share_expiry.sql 保持一致）
+ALTER TABLE reader_book ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP(3) NULL;
+ALTER TABLE reader_book ADD COLUMN IF NOT EXISTS share_token_expires_at TIMESTAMP(3) NULL;

@@ -32,6 +32,8 @@ import com.fishmatrix.reader.util.Validation;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.SecureRandom;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -50,6 +52,8 @@ public class LibraryService {
     private static final Logger log = LoggerFactory.getLogger(LibraryService.class);
 
     private static final SecureRandom RANDOM = new SecureRandom();
+    /** 分享码有效期：过期后链接失效，重新调用分享接口会生成新 token。 */
+    private static final Duration SHARE_TOKEN_TTL = Duration.ofDays(7);
     private static final int MAX_PAGE_SIZE = 100;
     /** 页码上限：防止 offset 过大，也防止有人从第 200 万页开始扫库。 */
     private static final int MAX_PAGE = 10_000;
@@ -61,7 +65,6 @@ public class LibraryService {
     private final FileStorage storage;
     private final BookAccessPolicy accessPolicy;
     private final BookImportWriter bookImportWriter;
-    private final BookRemovalService bookRemovalService;
     private final long maxImportBytes;
 
     public LibraryService(
@@ -72,7 +75,6 @@ public class LibraryService {
             FileStorage storage,
             BookAccessPolicy accessPolicy,
             BookImportWriter bookImportWriter,
-            BookRemovalService bookRemovalService,
             @Value("${app.reader.max-import-bytes:26214400}") long maxImportBytes) {
         this.bookMapper = bookMapper;
         this.chapterMapper = chapterMapper;
@@ -81,7 +83,6 @@ public class LibraryService {
         this.storage = storage;
         this.accessPolicy = accessPolicy;
         this.bookImportWriter = bookImportWriter;
-        this.bookRemovalService = bookRemovalService;
         this.maxImportBytes = maxImportBytes;
     }
 
@@ -257,10 +258,9 @@ public class LibraryService {
     public void delete(long bookId, CurrentUser viewer) {
         ReaderBook book = requireRecord(bookId);
         accessPolicy.requireDeletable(book, viewer);
-        bookRemovalService.deleteCascade(bookId);
-        if (book.getStorageKey() != null) {
-            storage.delete(book.getStorageKey());
-        }
+        // 软删除：只打标记。章节/进度/书签/批注与原始文件都保留，误删可以恢复
+        book.setDeletedAt(Instant.now());
+        bookMapper.updateById(book);
         log.info("删除书籍",
                 kv("event", "book.deleted"),
                 kv("book_id", bookId),
@@ -270,13 +270,19 @@ public class LibraryService {
 
     public ShareLink share(long bookId, CurrentUser viewer) {
         ReaderBook book = requirePrivateOwner(bookId, viewer);
-        if (book.getShareToken() != null && !book.getShareToken().isBlank()) {
-            return new ShareLink(book.getShareToken());
+        Instant now = Instant.now();
+        String existing = book.getShareToken();
+        Instant expiresAt = book.getShareTokenExpiresAt();
+        // 旧版本生成的 token 没有过期时间，视为仍有效；新生成的统一 7 天有效期
+        if (existing != null && !existing.isBlank()
+                && (expiresAt == null || expiresAt.isAfter(now))) {
+            return new ShareLink(existing);
         }
         byte[] bytes = new byte[24];
         RANDOM.nextBytes(bytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         book.setShareToken(token);
+        book.setShareTokenExpiresAt(now.plus(SHARE_TOKEN_TTL));
         bookMapper.updateById(book);
         return new ShareLink(token);
     }
@@ -284,8 +290,15 @@ public class LibraryService {
     public BookSummary previewByShareToken(String shareToken, CurrentUser viewer) {
         ReaderBook book = Optional.ofNullable(bookMapper.selectByShareToken(shareToken))
                 .filter(ReaderBook::isPrivate)
+                .filter(this::shareTokenValid)
                 .orElseThrow(() -> new NotFoundException("分享链接无效"));
         return summary(book, viewer);
+    }
+
+    /** 分享码是否仍在有效期内；没有过期时间的旧 token 视为有效。 */
+    public boolean shareTokenValid(ReaderBook book) {
+        Instant expiresAt = book.getShareTokenExpiresAt();
+        return expiresAt == null || expiresAt.isAfter(Instant.now());
     }
 
     public ReaderBook requireReadable(long bookId, CurrentUser viewer) {
