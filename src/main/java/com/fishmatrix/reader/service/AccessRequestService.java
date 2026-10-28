@@ -10,6 +10,7 @@ import com.fishmatrix.reader.entity.ReaderAccessRequest;
 import com.fishmatrix.reader.entity.ReaderBook;
 import com.fishmatrix.reader.error.NotFoundException;
 import com.fishmatrix.reader.error.ReaderErrorCodes;
+import com.fishmatrix.reader.event.AccessEventPublisher;
 import com.fishmatrix.reader.mapper.ReaderAccessRequestMapper;
 import com.fishmatrix.reader.mapper.ReaderBookMapper;
 import com.fishmatrix.reader.model.AccessRequestCreate;
@@ -44,6 +45,7 @@ public class AccessRequestService {
     private final ReaderAccessRequestMapper accessMapper;
     private final ReaderBookMapper bookMapper;
     private final LibraryService libraryService;
+    private final AccessEventPublisher accessEvents;
 
     @Transactional
     public AccessRequestView request(long bookId, AccessRequestCreate create, CurrentUser viewer) {
@@ -99,6 +101,7 @@ public class AccessRequestService {
         } else {
             accessMapper.updateById(entity);
         }
+        accessEvents.requested(entity.getId(), bookId, book.getOwnerId(), viewer.id());
 
         log.info(
                 "发起访问申请",
@@ -131,6 +134,8 @@ public class AccessRequestService {
     public AccessRequestView approve(long id, CurrentUser viewer) {
         ReaderAccessRequest request = requireOwnerPending(id, viewer);
         decide(request, AccessRequestStatus.APPROVED, "");
+        accessEvents.decided(
+                id, request.getBookId(), request.getRequesterId(), viewer.id(), AccessRequestStatus.APPROVED.name());
         log.info(
                 "通过访问申请",
                 kv("event", "access.approved"),
@@ -145,6 +150,8 @@ public class AccessRequestService {
     public AccessRequestView reject(long id, String reason, CurrentUser viewer) {
         ReaderAccessRequest request = requireOwnerPending(id, viewer);
         decide(request, AccessRequestStatus.REJECTED, Validation.text(reason, 255, "拒绝理由", false));
+        accessEvents.decided(
+                id, request.getBookId(), request.getRequesterId(), viewer.id(), AccessRequestStatus.REJECTED.name());
         log.info(
                 "拒绝访问申请",
                 kv("event", "access.rejected"),
@@ -162,6 +169,8 @@ public class AccessRequestService {
             throw ApiException.conflict(ReaderErrorCodes.ACCESS_INVALID_STATE, "只有已通过的申请才能撤销");
         }
         decide(request, AccessRequestStatus.REVOKED, "");
+        accessEvents.decided(
+                id, request.getBookId(), request.getRequesterId(), viewer.id(), AccessRequestStatus.REVOKED.name());
         log.info(
                 "收回访问授权",
                 kv("event", "access.revoked"),
@@ -182,6 +191,8 @@ public class AccessRequestService {
             throw ApiException.conflict(ReaderErrorCodes.ACCESS_INVALID_STATE, "只有待审批的申请才能取消");
         }
         decide(request, AccessRequestStatus.CANCELLED, "");
+        accessEvents.decided(
+                id, request.getBookId(), request.getRequesterId(), viewer.id(), AccessRequestStatus.CANCELLED.name());
         log.info(
                 "取消访问申请",
                 kv("event", "access.cancelled"),
