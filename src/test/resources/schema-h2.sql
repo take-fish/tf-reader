@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS reader_chapter (
 );
 
 CREATE TABLE IF NOT EXISTS reader_progress (
-    user_id VARCHAR(64) NOT NULL,
+    user_id BIGINT NOT NULL,
     book_id BIGINT NOT NULL,
     chapter_index INT NOT NULL DEFAULT 0,
     scroll_ratio DOUBLE NOT NULL DEFAULT 0,
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS reader_progress (
 
 CREATE TABLE IF NOT EXISTS reader_bookmark (
     id BIGINT NOT NULL AUTO_INCREMENT,
-    user_id VARCHAR(64) NOT NULL,
+    user_id BIGINT NOT NULL,
     book_id BIGINT NOT NULL,
     chapter_index INT NOT NULL,
     paragraph_index INT NOT NULL,
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS reader_annotation (
     book_id BIGINT NOT NULL,
     chapter_index INT NOT NULL,
     paragraph_index INT NOT NULL,
-    user_id VARCHAR(64) NOT NULL,
+    user_id BIGINT NOT NULL,
     nickname VARCHAR(32) NOT NULL,
     content VARCHAR(500) NOT NULL,
     created_at TIMESTAMP(3) NOT NULL,
